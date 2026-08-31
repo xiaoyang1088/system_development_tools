@@ -1,0 +1,15 @@
+# LaTeX 编译中间产物
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.xdv
+*.toc
+
+# Windows 下载标记
+*Zone.Identifier*
+
+# 个人 IDE 配置
+.vscode/
