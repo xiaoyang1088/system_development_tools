@@ -1,0 +1,9 @@
+timestamp,user,path,status,latency_ms
+09:00:01,alice,/api/users,200,120
+09:00:02,bob,/api/orders,500,310
+09:00:03,alice,/api/users,503,180
+09:00:04,carol,/login,500,90
+09:00:05,bob,/api/orders,502,260
+09:00:06,dave,/health,200,20
+09:00:07,alice,/api/orders,500,420
+09:00:08,carol,/api/users,500,150
