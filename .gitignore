@@ -8,6 +8,15 @@
 *.xdv
 *.toc
 
+# Python 缓存和测试工具缓存
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# 第二次实验可重新生成的数据
+/assignment-2/q08/words.txt
+
 # Windows 下载标记
 *Zone.Identifier*
 
