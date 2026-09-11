@@ -1233,4 +1233,57 @@ GitLens 安装完成，并显示已在 WSL Ubuntu 上启用：
   \item {\large 课后第 9 题：把列表查找改成集合查找后，性能分析显示速度提高很多。}
   \item {\large 课后第 10 题：字符串较多时，可以先放进列表，最后再用 \texttt{join} 拼接。}
 \end{enumerate}
+
+\color{red}\chapter{上传GitHub}\color{black}
+
+\section{编写并更新 .gitignore}
+
+在提交第二次实验作业前，我继续在课程仓库根目录维护 \texttt{.gitignore}，使其同时适用于两次作业。除 LaTeX 编译中间产物、Windows 下载标记和个人 VS Code 配置外，本次还增加了 Python 运行与测试产生的缓存，以及第 8 题中能够由脚本重新生成的词表文件。当前规则如下：
+
+\begin{lstlisting}
+# LaTeX 编译中间产物
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.xdv
+*.toc
+
+# Python 缓存和测试工具缓存
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# 第二次实验可重新生成的数据
+/assignment-2/q08/words.txt
+
+# Windows 下载标记
+*Zone.Identifier*
+
+# 个人 IDE 配置
+.vscode/
+\end{lstlisting}
+
+其中，\texttt{*.out} 是 LaTeX 超链接等功能生成的辅助文件；\texttt{\_\_pycache\_\_/} 和 \texttt{*.py[cod]} 用于忽略 Python 字节码缓存；\texttt{.pytest\_cache/} 与 \texttt{.ruff\_cache/} 分别是 Pytest 和 Ruff 的本地缓存。第 8 题的 \texttt{q08/words.txt} 可由 \texttt{generate\_words.py} 重新生成，因此不必作为源码提交。这样既能保留作业代码、实验报告和截图，又不会把可再生文件或本机工具状态混入版本记录。
+
+\section{GitHub 仓库链接}
+
+作业仓库地址（公开，默认分支为 \texttt{main}）：
+
+\begin{center}
+\url{https://github.com/xiaoyang1088/system_development_tools}
+\end{center}
+
+仓库用户名为 \texttt{xiaoyang1088}，仓库名为 \texttt{system\_development\_tools}。第二次作业保存在 \texttt{assignment-2/} 目录下，包含 \texttt{q05} 至 \texttt{q08}、\texttt{homework/}、\texttt{images/} 和实验报告文件；更新后的 \texttt{.gitignore} 位于课程仓库根目录，对整个仓库生效。
+
+\section{commit 提交记录}
+
+本次作业按完成进度进行了多次提交。提交历史中可以看到先后完成第 5 次提交的实验报告、更新 \texttt{.gitignore} 并上传 \texttt{q05}--\texttt{q08}、补充课后作业文件夹和报告截图，最后提交第二次实验报告。这样的提交过程保留了作业逐步完善的记录，也便于回溯每次变更。
+
+\reportimage{images/github-commit-history.png}{第二次实验作业的 GitHub commit 提交记录}
+
 \end{document}
+ 
