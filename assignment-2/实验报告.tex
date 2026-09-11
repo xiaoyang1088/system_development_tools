@@ -1,0 +1,1236 @@
+\documentclass[a4paper,12pt]{report}
+\usepackage{ctex}
+\usepackage{color}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{enumitem}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{amsmath}
+
+\geometry{left=2.8cm,right=2.8cm,top=2.7cm,bottom=2.7cm}
+\hypersetup{colorlinks=true,linkcolor=black,urlcolor=blue}
+\setlength{\parindent}{2em}
+\setlength{\parskip}{0.3em}
+\setlength{\emergencystretch}{2em}
+\setlist{itemsep=0.4em,topsep=0.4em}
+
+\definecolor{codegray}{RGB}{247,247,247}
+\definecolor{framegray}{RGB}{150,150,150}
+\lstdefinestyle{shellstyle}{
+  language=bash,
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{codegray},
+  frame=single,
+  rulecolor=\color{framegray},
+  breaklines=true,
+  keepspaces=true,
+  columns=fullflexible,
+  showstringspaces=false
+}
+\lstset{style=shellstyle}
+
+% 截图暂不插入。以后可把占位框替换为 \includegraphics。
+\newcommand{\placeholderfigure}[2]{%
+  \begin{center}
+    \fbox{\begin{minipage}[c][3.5cm][c]{0.84\textwidth}
+      \centering
+      \textbf{截图预留位置}\\[0.6em]
+      #2
+    \end{minipage}}
+    \captionof{figure}{#1}
+  \end{center}
+}
+
+\newcommand{\reportimage}[2]{%
+  \begin{center}
+    \includegraphics[width=0.88\textwidth,height=0.68\textheight,keepaspectratio]{#1}
+    \captionof{figure}{#2}
+  \end{center}
+}
+
+\begin{document}
+\title{系统开发工具基础}
+\author{肖扬\\计算机科学与技术\\学号：25020007140}
+\date{2026年9月6日}
+\maketitle
+
+\pagenumbering{roman}
+\tableofcontents
+\newpage
+\pagenumbering{arabic}
+
+\color{red}\chapter{实验环境说明}\color{black}
+\begin{enumerate}
+  \item {\large 系统版本：Ubuntu 22.04.1 LTS，用户名 xy\_ai，WSL2 架构}
+  \item {\large 编译器：gcc 11.4.0、GNU Make 4.3（都在 /usr/bin）}
+  \item {\large shell：bash 5.1.16（x86\_64-pc-linux-gnu）}
+  \item {\large git：2.34.1（Ubuntu 22.04 官方源版本，系统级）}
+  \item {\large LaTeX：TeX Live 2022/dev（Debian 版），含 xelatex、pdflatex、latexmk}
+  \item {\large 所有任务均在 base 这个环境中进行，没有使用其他环境}
+\end{enumerate}
+
+\color{red}\chapter{课堂学习部分}\color{black}
+
+\section{第 5 题 控制一个可清理的后台任务}
+
+\subsection{实验脚本及原理}
+
+题目中给出的脚本为 \texttt{worker.sh}，内容如下：
+
+\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
+#!/usr/bin/env bash
+trap 'echo CLEAN_EXIT >> cleanup.log; exit 0' TERM INT
+n=0
+while true; do
+    echo "$n"
+    n=$((n+1))
+    sleep 1
+done
+\end{lstlisting}
+
+第一行使用当前环境中的 Bash 解释脚本。\texttt{trap} 为 \texttt{TERM} 和 \texttt{INT} 信号设置处理动作：脚本收到其中任一信号时，先向 \texttt{cleanup.log} 追加 \texttt{CLEAN\_EXIT}，然后以状态码 0 退出。变量 \texttt{n} 从 0 开始，每轮循环输出当前值、加 1，并等待 1 秒。\texttt{while true} 使脚本持续运行，以便观察作业状态和信号处理过程。
+
+\subsection{实验操作过程}
+
+\begin{enumerate}
+  \item {\large 创建实验目录并确认路径}
+
+  在 WSL2 的 Ubuntu 终端中输入：
+
+\begin{lstlisting}
+mkdir q05
+cd q05
+pwd
+\end{lstlisting}
+
+  \texttt{mkdir q05} 用于建立独立的实验目录，使本题的脚本和日志集中保存；\texttt{cd q05} 进入该目录；\texttt{pwd} 用于确认实际工作位置。终端输出为：
+
+\begin{lstlisting}
+/home/xy_ai/q05
+\end{lstlisting}
+
+
+
+
+  \item {\large 创建并检查 worker.sh}
+
+\begin{lstlisting}
+nano worker.sh
+\end{lstlisting}
+
+  在 \texttt{nano} 中输入题目要求的脚本，保存并退出。随后执行：
+
+\begin{lstlisting}
+cat worker.sh
+\end{lstlisting}
+
+
+  \item {\large 增加执行权限并验证}
+
+\begin{lstlisting}
+chmod +x worker.sh
+ls -l worker.sh
+\end{lstlisting}
+
+使用 \texttt{chmod +x} 增加执行权限。\texttt{ls -l} 显示：
+
+\begin{lstlisting}
+-rwxr-xr-x 1 xy_ai xy_ai 140 Sep  6 22:15 worker.sh
+\end{lstlisting}
+
+
+  \item {\large 在前台启动脚本并分别重定向标准输出和标准错误}
+
+
+\begin{lstlisting}
+./worker.sh > stdout.log 2> stderr.log
+\end{lstlisting}
+
+  \texttt{>} 把标准输出，也就是文件描述符 1，写入 \texttt{stdout.log}；\texttt{2>} 把标准错误写入 \texttt{stderr.log}。把两种输出分开保存，可以分别检查正常数据和错误信息。
+
+  命令末尾没有 \texttt{\&}，因此脚本最初应该在前台运行。
+
+  \item {\large 使用 Ctrl-Z 暂停前台任务}
+
+  等待脚本运行一段时间后，我按下 \texttt{Ctrl-Z}。终端显示：
+
+\begin{lstlisting}
+[1]+  Stopped    ./worker.sh > stdout.log 2> stderr.log
+\end{lstlisting}
+
+  \texttt{Ctrl-Z} 会向当前前台进程组发送暂停信号，使进程停止执行但不退出。随后输入：
+
+\begin{lstlisting}
+jobs
+\end{lstlisting}
+
+  作业状态仍为 \texttt{Stopped}。其中 \texttt{[1]} 是 Bash 分配的作业号，说明该任务仍由当前 Shell 管理，只是暂时没有继续运行。
+
+  \item {\large 将暂停的任务放到后台继续运行}
+
+\begin{lstlisting}
+bg
+jobs
+\end{lstlisting}
+
+  \texttt{bg} 恢复最近暂停的任务，并使它在后台运行。再次查看 \texttt{jobs} 时，状态已经由 \texttt{Stopped} 变为 \texttt{Running}，命令末尾还显示 \texttt{\&}。这说明脚本已经恢复计数，同时终端可以继续输入其他命令。
+
+  \reportimage{images/class1-01.png}{创建目录、编写脚本、增加执行权限、暂停任务并在后台恢复}
+
+  \item {\large 使用 tail 验证后台任务仍在输出}
+
+\begin{lstlisting}
+tail stdout.log
+\end{lstlisting}
+
+  \texttt{tail} 默认显示文件最后 10 行。第一次截图中可以看到 48 至 54；稍后再次执行时，可以看到 77 至 86。末尾数值继续增加，证明脚本已经在后台恢复运行，并持续向 \texttt{stdout.log} 写入数据。
+
+
+  \item {\large 获取并保存后台任务的 PID}
+
+\begin{lstlisting}
+jobs -p
+\end{lstlisting}
+
+  \texttt{jobs -p} 只输出当前 Shell 所管理作业的进程号。本次实验得到：
+
+\begin{lstlisting}
+60
+\end{lstlisting}
+
+
+\begin{lstlisting}
+pid=$(jobs -p)
+echo "$pid"
+\end{lstlisting}
+
+  \texttt{\$(jobs -p)} 是命令替换，Bash 会把命令输出保存到变量 \texttt{pid} 中。\texttt{echo} 再次输出 60，说明变量赋值正确。
+
+  \reportimage{images/class1-02.png}{取得 PID 60、发送 SIGTERM、验证清理记录并查看标准输出}
+
+  \item {\large 发送 SIGTERM 并等待任务结束}
+
+
+\begin{lstlisting}
+kill -TERM "$pid"
+wait "$pid"
+\end{lstlisting}
+
+  \texttt{kill -TERM} 向 PID 60 发送 \texttt{SIGTERM}。这是一种可被进程捕获的终止请求，因此脚本中的 \texttt{trap} 有机会先执行清理动作。这里不能用无法捕获的 \texttt{SIGKILL}，否则脚本来不及写入清理日志。
+
+  \texttt{wait} 等待指定子进程结束，并让当前 Shell 回收其退出状态。终端显示：
+
+\begin{lstlisting}
+[1]+  Done    ./worker.sh > stdout.log 2> stderr.log
+\end{lstlisting}
+
+  \texttt{Done} 表示后台作业已经结束。
+
+
+  \item {\large 验证清理日志和作业列表}
+
+\begin{lstlisting}
+cat cleanup.log
+jobs
+\end{lstlisting}
+
+  \texttt{cat cleanup.log} 输出：
+
+\begin{lstlisting}
+CLEAN_EXIT
+\end{lstlisting}
+
+  这证明 \texttt{SIGTERM} 已经送达，脚本中的 \texttt{trap} 被成功触发，并在退出前完成了写入清理标记的操作。随后执行 \texttt{jobs} 没有任何输出，说明当前 Shell 中已经没有运行或暂停的后台作业。
+
+
+  \item {\large 检查 stdout.log 和 stderr.log}
+
+
+\begin{lstlisting}
+cat stdout.log
+cat stderr.log
+\end{lstlisting}
+
+  \texttt{stdout.log} 中保存了从 0 开始的连续递增整数。截图显示文件开头为 0、1、2、3 等，末尾可见 120 至 128，说明脚本的标准输出被正确保存，且后台恢复后继续写入。执行 \texttt{cat stderr.log} 时终端没有显示任何内容，说明本次运行没有产生标准错误。
+
+  \reportimage{images/class1-03.png}{标准输出末尾为 128，标准错误文件为空}
+\end{enumerate}
+
+\section{第 6 题 语义重构与本地开发反馈}
+
+\subsection{实验操作过程}
+
+\begin{enumerate}
+  \item {\large 使用 VS Code 创建三个 Python 文件}
+
+  我在 VS Code 中创建 \texttt{math\_utils.py}、\texttt{app.py} 和 \texttt{test\_math\_utils.py}。内容如下。
+
+  \texttt{math\_utils.py}：
+
+\begin{lstlisting}
+def total_price(price: float, count: int) -> float:
+    return price * count
+\end{lstlisting}
+
+  该函数接收单价和数量，返回二者的乘积。
+
+  \texttt{app.py}：
+
+\begin{lstlisting}
+from math_utils import total_price
+
+print(total_price(12.5, 4))
+\end{lstlisting}
+
+  该文件从 \texttt{math\_utils} 导入函数，以单价 12.5、数量 4 调用函数并打印结果。
+
+  \texttt{test\_math\_utils.py}：
+
+\begin{lstlisting}
+from math_utils import total_price
+
+
+def test_total_price():
+    assert total_price(12.5, 4) == 50.0
+\end{lstlisting}
+
+  测试使用 \texttt{assert} 检查函数是否返回预期的 \texttt{50.0}。测试文件名和测试函数名都是符合 Pytest 的自动发现规则。
+
+  \item {\large 运行重构前的程序与测试}
+
+\begin{lstlisting}
+python app.py
+pytest -q
+\end{lstlisting}
+
+  程序输出 \texttt{50.0}，Pytest 显示 \texttt{1 passed}。
+
+  \reportimage{images/class2-04-initial-check.png}{}
+
+  \item {\large 使用语言服务器查看函数信息并跳转到定义}
+
+  在 \texttt{app.py} 中把鼠标停在 \texttt{total\_price} 上，编辑器显示了函数签名、参数类型和返回类型：
+
+\begin{lstlisting}
+def total_price(price: float, count: int) -> float
+\end{lstlisting}
+
+  随后右键该函数并选择“转到定义”，VS Code 自动打开 \texttt{math\_utils.py}，并定位到函数定义。这证明语言服务器已经理解 \texttt{app.py} 中的调用来自 \texttt{math\_utils.py}。
+
+  \reportimage{images/class2-05-hover.png}{}
+  \reportimage{images/class2-06-goto-menu.png}{}
+  \reportimage{images/class2-07-definition.png}{}
+
+  \item {\large 查找 total\_price 的全部引用}
+
+  在函数定义处右键选择“查找所有引用”。VS Code 的引用面板显示“3 个文件中 5 个结果”，涉及 \texttt{math\_utils.py}、\texttt{app.py} 和 \texttt{test\_math\_utils.py}。这些结果包括函数定义、两处导入以及两处调用。手动修改定义，另外两个文件仍导入旧名称，程序会发生导入错误。
+
+  \reportimage{images/class2-08-reference-menu.png}{}
+  \reportimage{images/class2-09-references.png}{}
+
+  \item {\large 使用“重命名符号”完成语义重构}
+
+  将光标放在 \texttt{math\_utils.py} 的函数名 \texttt{total\_price} 上，按 \texttt{F2} 调出“重命名符号”，输入：
+
+\begin{lstlisting}
+calculate_total
+\end{lstlisting}
+
+ 语言服务器同步修改了函数定义、\texttt{app.py} 中的导入与调用，以及 \texttt{test\_math\_utils.py} 中的导入与调用。最终三个文件的有效代码如下：
+
+  \texttt{math\_utils.py}：
+
+\begin{lstlisting}
+def calculate_total(price: float, count: int) -> float:
+    return price * count
+\end{lstlisting}
+
+  \texttt{app.py}：
+
+\begin{lstlisting}
+from math_utils import calculate_total
+
+print(calculate_total(12.5, 4))
+\end{lstlisting}
+
+  \texttt{test\_math\_utils.py}：
+
+\begin{lstlisting}
+from math_utils import calculate_total
+
+
+def test_total_price():
+    assert calculate_total(12.5, 4) == 50.0
+\end{lstlisting}
+
+ 
+
+  \reportimage{images/class2-10-rename.png}{使用重命名符号将 total\_price 改为 calculate\_total}
+  \reportimage{images/class2-11-renamed-app.png}{}
+  \reportimage{images/class2-12-renamed-test.png}{}
+  \reportimage{images/class2-13-renamed-check.png}{程序仍输出 50.0，测试仍然通过}
+
+  \item {\large 使用 Ruff 发现未使用的 import os}
+
+  按题目要求，我先在 \texttt{app.py} 的第一行临时加入：
+
+\begin{lstlisting}
+import os
+\end{lstlisting}
+
+  因为后面的代码没有使用 \texttt{os}，所以这是一个没有作用的导入。保存后执行：
+
+\begin{lstlisting}
+ruff check .
+\end{lstlisting}
+
+  Ruff 报告 \texttt{F401}，指出 \texttt{os imported but unused}，位置是 \texttt{app.py:1:8}，并提示该问题可以使用 \texttt{--fix} 自动修复。
+
+  \reportimage{images/class2-14-import-os.png}{}
+  \reportimage{images/class2-15-ruff-error.png}{}
+
+  \item {\large 使用 Ruff 自动修复并进行最终验证}
+
+\begin{lstlisting}
+ruff check . --fix
+\end{lstlisting}
+
+  终端显示发现 1 个错误、已修复 1 个错误、剩余 0 个错误。Ruff 自动删除了未使用的 \texttt{import os}。
+
+
+\begin{lstlisting}
+ruff check .
+pytest -q
+python app.py
+\end{lstlisting}
+
+  Ruff 输出 \texttt{All checks passed!}，Pytest 输出 \texttt{1 passed in 0.01s}，程序仍然输出 \texttt{50.0}。
+
+  \reportimage{images/class2-16-ruff-fix.png}{Ruff 自动修复一个错误，剩余错误为零}
+  \reportimage{images/class2-17-app-clean.png}{自动修复删除 import os}
+  \reportimage{images/class2-18-final-check.png}{}
+\end{enumerate}
+
+\section{第 7 题 用调试器定位归并排序缺陷}
+
+\subsection{实验操作过程}
+
+\begin{enumerate}
+  \item {\large 创建 q07 并保存缺陷代码}
+
+
+\begin{lstlisting}
+cd "/home/xy_ai/系统工具开发基础2"
+mkdir -p q07
+cd q07
+\end{lstlisting}
+
+
+\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
+def merge(left, right):
+    result = []
+    i = j = 0
+    while i < len(left) and j < len(right):
+        if left[i] <= right[j]:
+            result.append(left[i])
+            i += 1
+        else:
+            result.append(right[i])
+            j += 1
+    return result + left[i:] + right[j:]
+
+
+def merge_sort(a):
+    if len(a) <= 1:
+        return a
+    m = len(a) // 2
+    return merge(merge_sort(a[:m]), merge_sort(a[m:]))
+
+
+print(merge_sort([3, 1, 4, 1, 5, 9, 2, 6]))
+\end{lstlisting}
+
+  归并排序先递归地把列表分成更小的部分，再由 \texttt{merge} 合并两个已排序的子列表。变量 \texttt{i} 应当表示左侧列表当前位置，\texttt{j} 应当表示右侧列表当前位置。缺陷代码在进入 \texttt{else} 分支时却使用了 \texttt{right[i]}。
+
+  \reportimage{images/class3-01-given-code.png}{}
+
+  \item {\large 运行缺陷代码并确认错误结果}
+
+\begin{lstlisting}
+python merge_sort.py
+\end{lstlisting}
+
+  终端输出：
+
+\begin{lstlisting}
+[1, 5, 4, 3, 4, 5, 6, 9]
+\end{lstlisting}
+
+  正确结果应为 \texttt{[1, 1, 2, 3, 4, 5, 6, 9]}。实际输出不仅没有保持升序，还丢失了一个 \texttt{1}，多出了一个 \texttt{5}。这证明程序可以运行，但是逻辑存在错误。
+
+  \reportimage{images/class3-02-wrong-output.png}{运行缺陷代码得到错误}
+
+  \item {\large 在可疑代码行设置断点并启动调试}
+
+  在下面这一行的行号左侧单击，设置红色断点：
+
+\begin{lstlisting}
+result.append(right[i])
+\end{lstlisting}
+
+随后在编辑器的运行菜单中选择 \texttt{Python Debugger: Debug Python File}，启动当前文件的调试。
+
+  \reportimage{images/class3-03-debug-command.png}{}
+  \reportimage{images/class3-08-breakpoint.png}{修改}
+
+  \item {\large 添加监视表达式并观察多次断点状态}
+
+  在调试面板的“监视”区域中，加入以下表达式：
+
+\begin{lstlisting}
+left
+right
+i
+j
+left[i]
+right[j]
+right[i]
+\end{lstlisting}
+
+  前两次在断点处暂停时，\texttt{i} 和 \texttt{j} 都等于 0。例如子列表为 \texttt{left=[3]}、\texttt{right=[1]}，以及 \texttt{left=[4]}、\texttt{right=[1]} 时，\texttt{right[i]} 和 \texttt{right[j]} 暂时指向同一个元素，所以缺陷还不明显。
+
+  \reportimage{images/class3-04-watch-first.png}{第一次断点处观察 left、right、i、j 和相应元素}
+  \reportimage{images/class3-05-watch-second.png}{继续执行后观察另一组子列表中的索引状态}
+  \reportimage{images/class3-06-locals.png}{调试面板同时显示局部变量和监视表达式}
+
+  继续运行到关键断点时，调试器显示：
+
+\begin{lstlisting}
+left = [1, 3]
+right = [1, 4]
+i = 1
+j = 0
+left[i] = 3
+right[j] = 1
+right[i] = 4
+\end{lstlisting}
+
+  当前比较为 \texttt{3 > 1}，程序应从右侧列表的当前位置 \texttt{j=0} 取出 \texttt{right[j]=1}。但是缺陷代码按照左侧索引 \texttt{i=1} 读取 \texttt{right[i]=4}，所以把错误的元素加入了结果。这个运行状态直接定位了缺陷原因。
+
+  \reportimage{images/class3-07-key-state.png}{关键断点状态：i 为 1、j 为 0，right[j] 与 right[i] 的值不同}
+
+  \item {\large 完成最小修复并重新运行}
+
+  停止调试后，修改产生错误的这一行：
+
+\begin{lstlisting}
+# 修改前
+result.append(right[i])
+
+# 修改后
+result.append(right[j])
+\end{lstlisting}
+
+  这是最小修复，因为程序整体的递归拆分、比较、索引递增和剩余元素拼接逻辑均未改变，也没有使用题目禁止的 \texttt{sorted}。修改后的关键代码如下图所示。
+
+  \reportimage{images/class3-09-fixed-code.png}{把错误的 right[i] 最小修改为 right[j]}
+
+  再次执行：
+
+\begin{lstlisting}
+python merge_sort.py
+\end{lstlisting}
+
+  此时终端输出：
+
+\begin{lstlisting}
+[1, 1, 2, 3, 4, 5, 6, 9]
+\end{lstlisting}
+
+  结果已经按升序排列，并且两个 \texttt{1} 都得到保留，说明缺陷修复有效。
+
+  \reportimage{images/class3-10-correct-output.png}{最小修复后得到正确的升序结果}
+
+  \item {\large 添加两个 Pytest 测试}
+
+  为了把正确行为固定为可重复执行的检查，我创建 \texttt{test\_merge\_sort.py}，内容如下：
+
+\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
+from merge_sort import merge_sort
+
+
+def test_given_input():
+    assert merge_sort([3, 1, 4, 1, 5, 9, 2, 6]) == [
+        1,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        9,
+    ]
+
+
+def test_duplicate_elements():
+    assert merge_sort([4, 2, 4, 1, 2]) == [1, 2, 2, 4, 4]
+\end{lstlisting}
+
+  第一个测试覆盖题目给定输入，确认最终顺序准确；第二个测试专门使用包含重复元素的列表，检查归并过程不会丢失或额外产生重复值。这两个测试共同针对本次缺陷可能造成的主要错误。
+
+  \item {\large 运行最终测试和静态检查}
+
+  
+
+\begin{lstlisting}
+pytest -q
+ruff check .
+python merge_sort.py
+\end{lstlisting}
+
+  Pytest 显示 \texttt{2 passed in 0.01s}，说明给定输入和重复元素两个测试均通过；Ruff 显示 \texttt{All checks passed!}，说明源代码通过静态检查；程序再次输出正确的 \texttt{[1, 1, 2, 3, 4, 5, 6, 9]}。三项结果从测试、代码质量和实际运行三个方面验证了修复。
+
+  \reportimage{images/class3-11-final-check.png}{}
+\end{enumerate}
+
+\section{第 8 题 先测量再优化慢速词频程序}
+
+\subsection{实验操作过程}
+
+\begin{enumerate}
+  \item {\large 创建 q08 和可重复的输入生成程序}
+
+  VS Code 终端中创建并进入实验目录：
+
+\begin{lstlisting}
+cd "/home/xy_ai/系统工具开发基础2"
+mkdir -p q08
+cd q08
+\end{lstlisting}
+
+  创建 \texttt{generate\_words.py}：
+
+\begin{lstlisting}
+import random
+
+
+random.seed(20260831)
+vocab = [f"w{i}" for i in range(1000)]
+
+with open("words.txt", "w", encoding="utf-8") as f:
+    f.write(" ".join(random.choice(vocab) for _ in range(30000)))
+\end{lstlisting}
+
+  \texttt{random.seed(20260831)} 固定随机数生成器的初始状态，使每次执行都生成相同的单词序列。候选词表由 \texttt{w0} 至 \texttt{w999} 组成，再从中选择 30000 次写入文件。固定输入可以避免优化前后因为输入不同而影响计时结果。
+
+  \reportimage{images/class4-01-generator.png}{使用固定随机种子生成包含 30000 个单词的 words.txt}
+
+  \item {\large 保存故意低效的去重程序}
+
+  创建 \texttt{wordfreq.py}：
+
+\begin{lstlisting}
+words = open("words.txt", encoding="utf-8").read().split()
+unique = []
+
+for word in words:
+    if word not in unique:
+        unique.append(word)
+
+print("count=", len(unique))
+\end{lstlisting}
+
+  程序读取并拆分全部单词，再使用列表 \texttt{unique} 保存第一次遇到的单词。对于每一个输入单词，\texttt{word not in unique} 都可能从列表开头逐个比较。随着 \texttt{unique} 变长，重复查找的比较次数不断增加，因此这是潜在的性能瓶颈。
+
+  \reportimage{images/class4-02-slow-code.png}{}
+
+  \item {\large 生成并验证相同输入}
+
+
+\begin{lstlisting}
+python generate_words.py
+ls -lh words.txt
+wc -w words.txt
+python wordfreq.py
+\end{lstlisting}
+
+  \texttt{words.txt} 的文件大小约为 144K，\texttt{wc -w} 显示 30000，证明输入数量正确。运行原程序输出 \texttt{count= 1000}。
+
+  \item {\large 使用 time 测量优化前的两次耗时}
+
+  在相同输入上连续执行两次：
+
+\begin{lstlisting}
+time python wordfreq.py
+time python wordfreq.py
+\end{lstlisting}
+
+  两次运行都输出 \texttt{count= 1000}，\texttt{real} 时间分别为 0.149 秒和 0.174 秒。\texttt{real} 表示从命令开始到结束实际经过的墙上时间，包含程序运行以及少量系统调度开销，是本题比较前后速度所采用的数据。
+
+  \reportimage{images/class4-03-before-time.png}{生成 30000 个单词并记录优化前两次 real 耗时}
+
+  \item {\large 使用 CProfile 定位主要耗时位置}
+
+\begin{lstlisting}
+python -m cProfile -s cumulative wordfreq.py
+\end{lstlisting}
+
+  参数 \texttt{-s cumulative} 使结果按照累计耗时排序。分析结果显示程序共发生 1012 次函数调用，总时间为 0.156 秒；\texttt{wordfreq.py:1(<module>)} 的累计耗时同样为 0.156 秒、自身耗时为 0.154 秒，而读取文件和 \texttt{split} 只占约 0.001 秒。
+
+  CProfile 把直接写在文件顶层的循环统计到 \texttt{<module>} 中。结合源码可知，主要耗时不是文件读取，而是循环中反复执行的列表成员检查 \texttt{word not in unique}。列表成员查找需要顺序比较，处理 30000 个单词时会产生大量重复操作。
+
+  \reportimage{images/class4-04-before-profile.png}{CProfile 显示优化前主要时间}
+
+  \item {\large 使用集合完成优化}
+
+  列表、循环和成员检查替换为集合构造，优化后的 \texttt{wordfreq.py} 为：
+
+\begin{lstlisting}
+words = open("words.txt", encoding="utf-8").read().split()
+unique = set(words)
+
+print("count=", len(unique))
+\end{lstlisting}
+
+  集合使用哈希结构，创建集合时会自动去除重复元素，平均情况下的查找与插入成本接近常数时间。因此，一次 \texttt{set(words)} 就可以完成去重，避免对不断增长的列表反复线性扫描。
+
+  程序仍然通过 \texttt{len(unique)} 根据输入实际计算数量，没有把结果 1000 写死，也没有改变最终功能。
+
+  \reportimage{images/class4-05-fast-code.png}{}
+
+  \item {\large 使用相同输入测量优化后的两次耗时}
+
+  保存后先运行程序确认仍输出 \texttt{count= 1000}，执行两次计时：
+
+\begin{lstlisting}
+python wordfreq.py
+time python wordfreq.py
+time python wordfreq.py
+\end{lstlisting}
+
+  两次优化后的 \texttt{real} 时间分别为 0.026 秒和 0.024 秒。使用的仍然是之前生成并经过 \texttt{wc -w} 验证的同一个 \texttt{words.txt}，因此可以直接与优化前结果比较。
+
+  我还再次运行 CProfile。优化后程序只有 12 次函数调用，总时间为 0.002 秒，\texttt{wordfreq.py} 顶层累计时间也降至 0.002 秒。该结果进一步说明原来的列表查重循环已经被消除。
+
+  \reportimage{images/class4-06-after-results.png}{优化后两次计时和 CProfile 结果}
+\end{enumerate}
+
+\subsection{中位数与加速比计算}
+
+本题每个版本各测量两次。两个数值的中位数取排序后中间两个数的平均值，因此优化前中位耗时为：
+
+\[
+\frac{0.149+0.174}{2}=0.1615\ \text{秒}
+\]
+
+优化后中位耗时为：
+
+\[
+\frac{0.026+0.024}{2}=0.025\ \text{秒}
+\]
+
+加速比使用优化前中位数除以优化后中位数：
+
+\[
+\frac{0.1615}{0.025}=6.46
+\]
+
+因此，在相同输入和相同输出条件下，优化后程序的中位耗时由 0.1615 秒下降到 0.025 秒，约获得 6.46 倍加速。CProfile 的 0.156 秒与 0.002 秒用于分析程序内部耗时，不与 \texttt{time} 的墙上时间混合计算正式加速比。
+
+\color{red}\chapter{课后练习部分}\color{black}
+
+\section{课后第 1 题}
+\begin{flushleft}
+  {\large 问题如下：\\
+  理解命令行中的选项终止符 \texttt{--}。使用 \texttt{touch -- -myfile} 创建一个以连字符开头的文件，然后在不使用 \texttt{--} 的情况下将其删除，并解释两种写法产生不同结果的原因。}
+\end{flushleft}
+
+\subsection{实验操作过程}
+\begin{enumerate}
+  \item {\large 创建并进入课后第 1 题目录}
+
+  为了把课后题与课上完成的 \texttt{q05} 至 \texttt{q08} 分开保存，我在第二次作业目录下建立 \texttt{homework/01}：
+
+\begin{lstlisting}
+cd assignment-2
+mkdir -p homework/01
+cd homework/01
+\end{lstlisting}
+
+
+
+  \item {\large 使用选项终止符创建特殊文件名}
+
+\begin{lstlisting}
+touch -- -myfile
+ls
+\end{lstlisting}
+
+  \texttt{touch} 用于创建空文件；其中 \texttt{--} 结束选项解析，使后面的 \texttt{-myfile} 被解释为文件名。随后 \texttt{ls} 输出 \texttt{-myfile}，证明这个以连字符开头的文件已经创建成功。
+
+  \item {\large 直接删除并观察失败结果}
+
+尝试直接执行：
+
+\begin{lstlisting}
+rm -myfile
+\end{lstlisting}
+
+  终端报告 \texttt{rm: invalid option -- 'm'}，并提示可以使用 \texttt{rm ./-myfile}。这是因为 \texttt{rm} 看到 \texttt{-myfile} 以连字符开头后，把其中的内容当成命令选项解析；\texttt{-m} 不是 \texttt{rm} 支持的选项，因此命令失败，文件没有被删除。这个失败现象正好验证了题目所说明的选项解析规则。
+
+  \item {\large 不使用 \texttt{--} 正确删除文件}
+
+  按照题目要求，我没有在删除命令中使用 \texttt{--}，而是执行：
+
+\begin{lstlisting}
+rm ./-myfile
+ls
+\end{lstlisting}
+
+  \texttt{./} 表示当前目录，因此 \texttt{./-myfile} 和 \texttt{-myfile} 指向同一个文件。由于传给 \texttt{rm} 的参数现在以 \texttt{.} 开头，命令将其识别为普通路径并成功删除。最后一次 \texttt{ls} 没有任何输出，证明目录中已不存在该文件。
+
+  \reportimage{images/homework1-01-option-terminator.png}{课后第 1 题：创建以连字符开头的文件，观察直接删除失败，并使用相对路径成功删除}
+\end{enumerate}
+
+\section{课后第 2 题}
+\begin{flushleft}
+  {\large 问题如下：\\
+  使用 \texttt{diff} 和 Bash 的进程替换比较 \texttt{printenv} 与 \texttt{export} 的排序输出，执行 \texttt{diff <(printenv | sort) <(export | sort)}，观察两者的差异并解释产生差异的原因。}
+\end{flushleft}
+
+\subsection{实验操作过程}
+\begin{enumerate}
+  \item {\large 创建并进入课后第 2 题目录}
+
+ 返回第二次作业的 \texttt{homework} 目录，建立并进入 \texttt{02}：
+
+\begin{lstlisting}
+cd
+cd 系统工具开发基础/assignment-2/homework
+mkdir 02
+cd 02
+\end{lstlisting}
+
+  \item {\large 查看并排序 \texttt{printenv} 输出}
+
+
+\begin{lstlisting}
+printenv | sort | head
+\end{lstlisting}
+
+  \texttt{printenv} 输出当前进程能够取得的环境变量，格式为 \texttt{NAME=value}。\texttt{sort} 按文本顺序排序，\texttt{head} 只显示前十行，便于观察。终端显示了 \texttt{CONDA\_DEFAULT\_ENV=base}、\texttt{HOME=/home/xy\_ai} 等内容，说明当前实验在 Conda 的 \texttt{base} 环境和用户 \texttt{xy\_ai} 的 Bash 会话中进行。
+
+  \item {\large 查看并排序 \texttt{export} 输出}
+
+\begin{lstlisting}
+export | sort | head
+\end{lstlisting}
+
+  不带参数的 \texttt{export} 会列出当前 Shell 中被标记为导出的变量。Bash 使用可重新作为 Shell 声明读取的格式输出，例如 \texttt{declare -x HOME="/home/xy\_ai"}。与 \texttt{printenv} 相比，变量名称和值大多对应，但每一行增加了 \texttt{declare -x}，字符串值也使用引号表示。
+
+  \reportimage{images/homework2-01-printenv-export-diff.png}{课后第 2 题：分别查看 printenv 与 export 的排序结果，并使用进程替换交给 diff 比较}
+
+  \item {\large 使用 \texttt{diff} 和进程替换比较输出}
+
+
+
+\begin{lstlisting}
+diff <(printenv | sort) <(export | sort)
+\end{lstlisting}
+
+  第一处 \texttt{<(printenv | sort)} 把排序后的环境变量输出作为第一个临时输入，第二处 \texttt{<(export | sort)} 把排序后的导出声明作为第二个临时输入。\texttt{diff} 输出开头的 \texttt{1,43c1,42} 表示第一个输入的第 1 至 43 行需要改变为第二个输入的第 1 至 42 行。以 \texttt{<} 开头的行来自第一个输入，以 \texttt{>} 开头的行来自第二个输入。
+
+  截图中，第一个输入包含 \texttt{CONDA\_DEFAULT\_ENV=base}，第二个输入的对应内容则是 \texttt{declare -x CONDA\_DEFAULT\_ENV="base"}。因此，即使变量表达的是同一项信息，两种命令使用的文本格式不同，\texttt{diff} 仍会把它们判断为不同的行。
+
+  \item {\large 检查退出状态并观察临时路径}
+
+  在 \texttt{diff} 结束后，执行：
+
+\begin{lstlisting}
+echo $?
+echo <(printenv | sort)
+\end{lstlisting}
+
+  \texttt{echo \$?} 输出 1。对于 \texttt{diff} 而言，状态 0 表示两个输入相同，状态 1 表示发现差异，大于 1 才表示比较过程中发生错误。因此，本次的 1 证明比较正常完成并确实发现不同，不能把它理解为命令运行失败。
+
+  第二条命令输出 \texttt{/dev/fd/63}，直接展示了本次 Bash 为进程替换提供的文件描述符路径。该路径只在相关命令执行期间有效，不是在 \texttt{homework/02} 中永久保存的普通文件。
+
+  \reportimage{images/homework2-02-status-process-substitution.png}{课后第 2 题：diff 返回状态 1，并显示进程替换产生的 /dev/fd/63 路径}
+\end{enumerate}
+
+\section{课后第 3 题}
+\begin{flushleft}
+  {\large 问题如下：\\
+  对一个很少失败的随机命令编写 Bash 调试脚本，不断运行该命令直到出现失败；把失败时的标准输出和标准错误分别保存到文件中并打印结果，同时报告经过多少次运行才失败。}
+\end{flushleft}
+
+\subsection{实验操作过程}
+\begin{enumerate}
+  \item {\large 创建并进入课后第 3 题目录}
+
+
+
+\begin{lstlisting}
+cd "/home/xy_ai/系统工具开发基础/assignment-2"
+mkdir -p homework/03
+cd homework/03
+\end{lstlisting}
+
+  \item {\large 编写很少失败的目标脚本}
+
+  \texttt{rare\_failure.sh}内容为：
+
+\begin{lstlisting}
+#!/usr/bin/env bash
+
+n=$((RANDOM % 100))
+
+if [[ n -eq 42 ]]; then
+    echo "Something went wrong"
+    echo "The error was using magic numbers" >&2
+    exit 1
+fi
+
+echo "Everything went according to plan"
+\end{lstlisting}
+
+  Bash 的 \texttt{RANDOM} 每次产生一个随机整数，对 100 取余后得到 0 至 99 的数。只有当结果等于 42 时程序才进入失败分支，因此单次运行失败的概率约为 $1/100$。失败分支把第一句话写到标准输出，把第二句话通过 \texttt{>\&2} 写到标准错误，并使用 \texttt{exit 1} 返回失败状态；其他情况下程序输出成功信息并以状态 0 结束。
+
+  \item {\large 编写持续运行并捕获失败的脚本}
+
+  创建 \texttt{run\_until\_fail.sh}：
+
+\begin{lstlisting}
+#!/usr/bin/env bash
+
+stdout_file="stdout.log"
+stderr_file="stderr.log"
+attempts=0
+
+: > "$stdout_file"
+: > "$stderr_file"
+
+while true; do
+    attempts=$((attempts + 1))
+
+    ./rare_failure.sh > "$stdout_file" 2> "$stderr_file"
+    status=$?
+
+    if ((status != 0)); then
+        break
+    fi
+done
+
+echo "Failed after $attempts attempts."
+echo "Exit status: $status"
+
+echo "--- Standard output ---"
+cat "$stdout_file"
+
+echo "--- Standard error ---"
+cat "$stderr_file"
+\end{lstlisting}
+
+  变量 \texttt{attempts} 从 0 开始，每轮循环先加 1。目标脚本的标准输出和标准错误分别覆盖写入两个日志文件，然后立即用 \texttt{status=\$?} 保存返回码。如果返回码不为 0，\texttt{break} 终止无限循环；否则继续下一轮。退出循环后，脚本打印运行次数、返回码以及两个日志文件的内容。
+
+  \reportimage{images/homework3-01-scripts.png}{课后第 3 题：创建随机失败脚本和持续运行至失败的调试脚本}
+
+  \item {\large 检查语法并设置执行权限}
+
+\begin{lstlisting}
+bash -n rare_failure.sh
+bash -n run_until_fail.sh
+echo $?
+chmod +x rare_failure.sh run_until_fail.sh
+\end{lstlisting}
+
+  \texttt{bash -n} 只检查脚本语法而不执行其中的命令。\texttt{echo \$?} 输出 0，说明两个脚本通过语法检查。随后使用 \texttt{chmod +x} 为它们增加执行权限，保证可以通过 \texttt{./脚本名} 直接运行。
+
+  \item {\large 运行至失败并检查保存结果}
+
+\begin{lstlisting}
+./run_until_fail.sh
+\end{lstlisting}
+
+  本次实验在第 140 次运行时遇到随机失败，输出 \texttt{Failed after 140 attempts.}，返回状态为 1。脚本随后打印标准输出中的 \texttt{Something went wrong}，以及标准错误中的 \texttt{The error was using magic numbers}。
+
+ 单独验证日志：
+
+\begin{lstlisting}
+cat stdout.log
+cat stderr.log
+ls -l stdout.log stderr.log
+\end{lstlisting}
+
+  \texttt{stdout.log} 只包含普通故障提示，\texttt{stderr.log} 只包含错误原因，两种输出没有混合。\texttt{ls -l} 显示两个日志文件均已生成，其中 \texttt{stdout.log} 为 21 字节，\texttt{stderr.log} 为 34 字节。
+
+  \reportimage{images/homework3-02-results.png}{}
+\end{enumerate}
+
+\section{课后第 4 题}
+\begin{flushleft}
+  {\large 问题如下：\\
+  递归找出某个目录中最近修改过的文件，并进一步按照“最近修改时间”列出目录中的所有文件。}
+\end{flushleft}
+
+\subsection{实验操作过程}
+\begin{enumerate}
+  \item {\large 创建第 4 题目录和多层测试结构}
+
+
+
+\begin{lstlisting}
+cd "/home/xy_ai/系统工具开发基础/assignment-2"
+mkdir -p homework/04
+cd homework/04
+mkdir -p testdir/subdir/deeper
+\end{lstlisting}
+
+  在不同层级创建三个文件，其中一个文件名包含空格：
+
+\begin{lstlisting}
+touch testdir/old.txt
+touch "testdir/subdir/middle file.txt"
+touch testdir/subdir/deeper/newest.txt
+\end{lstlisting}
+
+  \item {\large 设置可重复验证的修改时间}
+
+  为了避免三个文件的创建时间过于接近，使用 \texttt{touch -t} 设置明确的修改时间：
+
+\begin{lstlisting}
+touch -t 202609081000 testdir/old.txt
+touch -t 202609081100 "testdir/subdir/middle file.txt"
+touch -t 202609081200 testdir/subdir/deeper/newest.txt
+\end{lstlisting}
+
+  三个时间分别表示2026年9月8日10时、11时和12时。这样，正确的从新到旧顺序应当是 \texttt{newest.txt}、\texttt{middle file.txt}、\texttt{old.txt}。我执行：
+
+\begin{lstlisting}
+find testdir -type f -printf '%TY-%Tm-%Td %TH:%TM:%TS %p\n'
+\end{lstlisting}
+
+  输出显示三个文件及其设定时间，且最深层的 \texttt{newest.txt} 也被找到，证明 \texttt{find} 已递归遍历子目录。此时输出顺序来自目录遍历过程，并不代表时间顺序。
+
+  \item {\large 找出最近修改的单个文件}
+
+\begin{lstlisting}
+find testdir -type f \
+  -printf '%T@ %TY-%Tm-%Td %TH:%TM:%TS %p\n' |
+  sort -nr | head -n 1 | cut -d' ' -f2-
+\end{lstlisting}
+
+  \texttt{\%T@} 在每行开头输出适合数值排序的修改时间戳，\texttt{sort -nr} 使用数值倒序排列，\texttt{head -n 1} 只保留第一行。最后，\texttt{cut -d' ' -f2-} 去掉开头的排序键，保留可读时间和完整路径。输出为12时修改的 \texttt{testdir/subdir/deeper/newest.txt}，与预设结果一致。
+
+  \item {\large 按修改时间列出全部文件}
+
+  去掉只保留第一行的 \texttt{head} 后执行：
+
+\begin{lstlisting}
+find testdir -type f \
+  -printf '%T@ %TY-%Tm-%Td %TH:%TM:%TS %p\n' |
+  sort -nr | cut -d' ' -f2-
+\end{lstlisting}
+
+  输出依次为12时的 \texttt{newest.txt}、11时的 \texttt{middle file.txt} 和10时的 \texttt{old.txt}。文件名中的空格被完整保留，全部文件也按最近修改时间从新到旧排列，完成了题目更一般的要求。
+
+  \item {\large 编写可重复使用的通用脚本}
+
+  为了能够查询任意目录，上述逻辑整理为 \texttt{recent\_files.sh}：
+
+\begin{lstlisting}
+#!/usr/bin/env bash
+
+directory="${1:-.}"
+
+if [[ ! -d "$directory" ]]; then
+    echo "Error: '$directory' is not a directory." >&2
+    exit 1
+fi
+
+records=$(
+    find "$directory" -type f \
+        -printf '%T@ %TY-%Tm-%Td %TH:%TM:%TS %p\n' |
+        sort -nr
+)
+
+if [[ -z "$records" ]]; then
+    echo "No files found in: $directory"
+    exit 0
+fi
+
+echo "--- Most recently modified file ---"
+printf '%s\n' "$records" |
+    head -n 1 |
+    cut -d' ' -f2-
+
+echo
+echo "--- All files, newest first ---"
+printf '%s\n' "$records" |
+    cut -d' ' -f2-
+\end{lstlisting}
+
+  \texttt{directory="\${1:-.}"} 表示优先使用第一个命令行参数，没有参数时默认查询当前目录。脚本先验证参数是否为目录，再把递归查找并排序后的结果保存到 \texttt{records}。如果没有找到文件则给出提示；否则分别输出最近的一个文件和完整排序列表。
+
+  \item {\large 验证脚本和错误处理}
+
+\begin{lstlisting}
+bash -n recent_files.sh
+echo $?
+chmod +x recent_files.sh
+ls -l recent_files.sh
+./recent_files.sh testdir
+./recent_files.sh no_such_directory
+echo $?
+\end{lstlisting}
+
+  语法检查返回0，\texttt{ls -l} 中出现执行权限。查询 \texttt{testdir} 时，脚本正确报告最近文件并列出12时、11时、10时的全部文件；传入不存在的 \texttt{no\_such\_directory} 时，错误信息被写到标准错误，脚本返回1，说明参数检查有效。
+
+  \reportimage{images/homework4-01-recursive-mtime.png}{}
+\end{enumerate}
+
+\section{课后第 5 题}
+\begin{flushleft}
+  {\large 问题如下：\\
+  创建一个名为 \texttt{dc} 的命令别名，使得把 \texttt{cd} 误输入成 \texttt{dc} 时仍能正常切换目录。}
+\end{flushleft}
+
+\subsection{实验操作过程}
+\begin{enumerate}
+  \item {\large 创建并进入课后第 5 题目录}
+
+
+\begin{lstlisting}
+cd "/home/xy_ai/系统工具开发基础/assignment-2"
+mkdir -p homework/05
+cd homework/05
+\end{lstlisting}终端提示符随后显示当前位置为 \texttt{assignment-2/homework/05}。
+
+  \item {\large 创建并检查 \texttt{dc} 别名}
+
+  当前 Bash 会话中执行：
+
+\begin{lstlisting}
+alias dc='cd'
+alias dc
+\end{lstlisting}
+
+  第一条命令把名称 \texttt{dc} 绑定到 Bash 内置命令 \texttt{cd}。第二条命令专门查询这个别名，终端输出 \texttt{alias dc='cd'}，证明别名已经成功注册。
+
+  \item {\large 使用别名完成目录切换}
+
+  为了验证别名能够像原命令一样接收路径参数：
+
+\begin{lstlisting}
+dc ~/系统工具开发基础
+\end{lstlisting}
+
+  Bash 先把命令开头的 \texttt{dc} 展开为 \texttt{cd}，然后保留后面的目录参数，因此实际效果相当于执行 \texttt{cd ~/系统工具开发基础}。执行后，终端提示符从 \texttt{assignment-2/homework/05} 变为 \texttt{~/系统工具开发基础}，证明当前工作目录已经成功改变，也说明把 \texttt{cd} 错打成 \texttt{dc} 时仍能正常工作。
+
+  \reportimage{images/homework5-01-alias-dc.png}{课后第 5 题：创建并查询 dc 别名，然后使用 dc 成功切换工作目录}
+\end{enumerate}
+
+\section{课后第 6 题}
+\begin{flushleft}
+  {\large 问题如下：\\
+  浏览一份 IDE 扩展列表，从中选择并安装一个看起来对自己的开发工作有用的扩展。}
+\end{flushleft}
+
+\subsection{实验操作过程}
+\begin{enumerate}
+  \item {\large 浏览扩展详情并确认选择}
+
+浏览 GitLens 扩展详情并根据 Git 版本控制需求决定安装：
+
+  \reportimage{images/homework6-01-gitlens-before-install.png}{}
+
+  \item {\large 安装扩展并确认 WSL 环境中的状态}
+
+GitLens 安装完成，并显示已在 WSL Ubuntu 上启用：
+
+  \reportimage{images/homework6-02-gitlens-installed.png}{}
+\end{enumerate}
+
+\section{课后第 7 题}
+\begin{flushleft}
+  {\large 问题如下：\\
+  二分查找程序在查找不存在的数字时会陷入死循环。使用 VS Code 调试器定位问题，并进行最小修复。}
+\end{flushleft}
+
+\reportimage{images/homework7-01-timeout.png}{程序超时退出，返回码为 124}
+
+调试发现 \texttt{low=3}、\texttt{high=4}、\texttt{mid=3} 重复不变，搜索范围没有缩小。
+
+\reportimage{images/homework7-02-debug.png}{调试器中重复不变的变量状态}
+
+将 \texttt{low = mid} 改为 \texttt{low = mid + 1} 后，程序输出 \texttt{-1}，Ruff 检查通过。
+
+\reportimage{images/homework7-03-result.png}{修复后的运行结果与 Ruff 检查结果}
+
+\section{课后第 8 题}
+\begin{flushleft}
+  {\large 问题如下：\\
+  删除列表负数的程序会遗漏连续负数。使用 VS Code 调试器定位问题并修复。}
+\end{flushleft}
+
+程序初次输出 \texttt{[3, -2, 4, -6]}。调试时发现删除元素后，下标递增会跳过新的当前元素。
+
+\reportimage{images/homework8-02-debug.png}{调试器显示被跳过的负数}
+
+只在未删除元素时递增下标，程序正确输出 \texttt{[3, 4]}，Ruff 检查通过。
+
+\reportimage{images/homework8-01-results.png}{修复前后运行结果与 Ruff 检查结果}
+
+\section{课后第 9 题}
+\begin{flushleft}
+  {\large 问题如下：\\
+  使用性能分析工具优化查找两个列表共同元素的程序。}
+\end{flushleft}
+
+原程序使用列表查找共同元素，分析耗时为约 \texttt{1.205} 秒；将第二个列表改为集合后，结果仍为 \texttt{10000}，耗时降为约 \texttt{0.004} 秒。
+
+\reportimage{images/homework9-01-profile.png}{优化前后运行结果与 cProfile 分析}
+
+优化后的代码使用集合进行成员查找，Ruff 检查通过。
+
+\reportimage{images/homework9-02-optimized-code.png}{使用集合优化查找代码}
+
+\section{课后第 10 题}
+\begin{flushleft}
+  {\large 问题如下：\\
+  使用性能分析工具优化循环中的字符串拼接程序。}
+\end{flushleft}
+
+将循环中的字符串累加改为列表收集后使用 \texttt{join}，两次输出长度均为 \texttt{288890}，cProfile 显示优化后调用方式改变，Ruff 检查通过。
+
+\reportimage{images/homework10-01-profile.png}{优化前后运行结果与 cProfile 分析}
+
+\reportimage{images/homework10-02-code.png}{使用列表和 join 优化字符串拼接}
+
+\color{red}\chapter{解题感悟}\color{black}
+\section{课上练习}
+\begin{enumerate}
+  \item {\large 第 5 题中，我以前把 \texttt{Ctrl-Z} 当成结束程序，做完后才知道它只是暂停，之后还能用 \texttt{bg} 继续运行。}
+  \item {\large 第 6 题让我发现，重命名函数时用编辑器的“重命名符号”比较方便，几个文件里的调用可以一起改。Ruff 也能很快找到没有使用的导入。}
+  \item {\large 第 7 题中，第一次停在断点时还看不出问题，继续运行到 \texttt{i} 和 \texttt{j} 不同时，才发现代码用了错误的下标。}
+  \item {\large 第 8 题让我知道优化前要先计时。把列表去重改成集合后，输出没有变化，但运行快了很多。}
+\end{enumerate}
+\section{课后练习}
+\begin{enumerate}
+  \item {\large 课后第 1 题：文件名以连字符开头时容易被当成选项，在前面加 \texttt{./} 就能明确表示文件路径。}
+  \item {\large 课后第 2 题：\texttt{printenv} 和 \texttt{export} 显示的格式不同，进程替换可以让 \texttt{diff} 直接比较两条命令的输出。}
+  \item {\large 课后第 3 题：用循环可以自动等到偶尔出现的错误，并把当时的两种输出分别保存下来。}
+  \item {\large 课后第 4 题：\texttt{find} 找到文件后，还要按修改时间排序才能确定哪个文件最新。}
+  \item {\large 课后第 5 题：别名能改正经常输错的命令，不过当前设置只在这个终端中有效。}
+  \item {\large 课后第 6 题：我选择 GitLens，是因为以后查看 Git 的提交记录时可能会用到。}
+  \item {\large 课后第 7 题：变量一直不变说明二分查找的范围没有继续缩小。}
+  \item {\large 课后第 8 题：删除元素后，后面的元素会向前移动，所以下标不能马上加一。}
+  \item {\large 课后第 9 题：把列表查找改成集合查找后，性能分析显示速度提高很多。}
+  \item {\large 课后第 10 题：字符串较多时，可以先放进列表，最后再用 \texttt{join} 拼接。}
+\end{enumerate}
+\end{document}
