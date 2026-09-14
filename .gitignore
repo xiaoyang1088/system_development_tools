@@ -22,3 +22,15 @@ __pycache__/
 
 # 个人 IDE 配置
 .vscode/
+
+# 第三次实验的虚拟环境和 Python 构建中间产物
+/assignment-3/q09-test/
+/assignment-3/**/build/
+/assignment-3/**/*.egg-info/
+
+# q10 从 q09 复制的旧构建包；q09/dist 保留为第 9 题实验成果
+/assignment-3/q10/dist/
+
+# 第三次实验报告的排版检查图片和本地备份
+/assignment-3/实验报告/tmp/
+/assignment-3/实验报告/*.bak
