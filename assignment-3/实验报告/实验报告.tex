@@ -1,0 +1,939 @@
+\documentclass[a4paper,12pt]{report}
+\usepackage{ctex}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{listings}
+\usepackage{geometry}
+\usepackage{hyperref}
+
+\geometry{left=2.8cm,right=2.8cm,top=2.7cm,bottom=2.7cm}
+\setlength{\parindent}{2em}
+\setlength{\parskip}{0.3em}
+\setlength{\emergencystretch}{2em} 
+
+\definecolor{codegray}{RGB}{247,247,247}
+\definecolor{framegray}{RGB}{150,150,150}
+\lstset{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{codegray},
+  frame=single,
+  rulecolor=\color{framegray},
+  breaklines=true,
+  keepspaces=true,
+  columns=fullflexible, 
+  showstringspaces=false
+} 
+
+\newcommand{\reportimage}[2]{%
+  \begin{center}
+    \includegraphics[width=0.88\textwidth,height=0.68\textheight,keepaspectratio]{#1}
+    \captionof{figure}{#2}
+  \end{center}  
+}
+
+\begin{document}
+\title{系统开发工具基础}
+\author{肖扬\\计算机科学与技术\\学号：25020007140}
+\date{2026年9月14日}
+\maketitle
+
+\pagenumbering{roman}
+\tableofcontents
+\newpage
+\pagenumbering{arabic}
+
+\color{red}\chapter{实验环境说明}\color{black}
+\begin{enumerate}
+  \item {\large 系统环境：Ubuntu，用户名 xy\_ai，WSL2 架构}
+  \item {\large Shell：bash 5.1.16（x86\_64-pc-linux-gnu）}
+  \item {\large Python：Miniconda 环境中的 Python 3.12；第 12 题使用安装了 PyTorch 的 AI\_env 环境进行 CPU 训练}
+  \item {\large 构建工具：build 1.6.1、setuptools 68 及以上版本}
+  \item {\large LaTeX：TeX Live 2022/dev（Debian 版），使用 XeLaTeX 编译}
+\end{enumerate}
+
+\color{red}\chapter{课堂学习部分}\color{black}
+
+\section{第 9 题 从源码构建并在干净环境安装 Wheel}
+
+\reportimage{images/q09-01-task.png}{第 9 题题目要求}
+
+\begin{enumerate}
+  \item {\large 创建项目目录和所需文件}
+
+  在 assignment-3 下创建 \texttt{q09}，再建立 \texttt{src/greetlab} 目录，并创建
+  \texttt{\_\_init\_\_.py}、\texttt{cli.py} 和 \texttt{pyproject.toml}。最后用
+  \texttt{find} 查看目录结构，文件均已放到指定位置。
+
+\reportimage{images/q09-02-create-files.png}{创建 q09 项目目录及文件}
+
+  \item {\large 编写命令行程序}
+
+  \texttt{src/greetlab/cli.py} 的内容如下：
+
+\begin{lstlisting}[language=Python]
+import argparse
+
+def main():
+    p = argparse.ArgumentParser()
+    p.add_argument("--name", required=True)
+    a = p.parse_args()
+    print(f"Hello, {a.name}!")
+\end{lstlisting}
+
+  程序使用 \texttt{argparse} 接收必填的 \texttt{--name} 参数，然后输出问候语。
+
+  \item {\large 编写项目配置文件}
+
+  \texttt{pyproject.toml} 的内容如下，项目名末尾加上了学号：
+
+\begin{lstlisting}
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "greetlab-25020007140"
+version = "0.1.0"
+
+[project.scripts]
+sdt-greet = "greetlab.cli:main"
+\end{lstlisting}
+
+  \item {\large 安装 build 工具并构建 Wheel}
+
+  第一次执行 \texttt{python -m build} 时，终端提示缺少 \texttt{build} 模块。我先运行
+  \texttt{python -m pip install build} 完成安装，再重新构建。随后程序创建隔离环境，读取
+  \texttt{pyproject.toml} 并生成发布文件。
+
+\reportimage{images/q09-03-build.png}{安装 build 工具并执行项目构建}
+
+  构建完成后，\texttt{dist} 目录中生成以下两个文件：
+
+\begin{lstlisting}
+greetlab_25020007140-0.1.0-py3-none-any.whl
+greetlab_25020007140-0.1.0.tar.gz
+\end{lstlisting}
+
+  \item {\large 在干净虚拟环境中安装 Wheel}
+
+  返回 assignment-3 目录，使用下面的命令新建并启用虚拟环境：
+
+\begin{lstlisting}[language=bash]
+python -m venv q09-test
+source q09-test/bin/activate
+pip install q09/dist/greetlab_25020007140-0.1.0-py3-none-any.whl
+\end{lstlisting}
+
+  安装命令只指定刚生成的 Wheel。终端显示
+  \texttt{Successfully installed greetlab-25020007140-0.1.0}，安装顺利完成。
+
+  \item {\large 在 q09 目录外验证命令行程序}
+
+  仍在 assignment-3 目录中运行：
+
+\begin{lstlisting}[language=bash]
+sdt-greet --name 25020007140
+\end{lstlisting}
+
+  终端输出 \texttt{Hello, 25020007140!}。入口命令在 \texttt{q09} 目录外也能运行，
+  因此不是依靠当前源码目录才生效。完成后使用 \texttt{deactivate} 退出虚拟环境。
+
+\reportimage{images/q09-04-install-test.png}{在干净虚拟环境中安装并验证 Wheel}
+\end{enumerate}
+
+\section{第 10 题 让编程智能体进入可验证的修复循环}
+
+\reportimage{images/q10-01-task.png}{第 10 题题目要求}
+
+\begin{enumerate}
+  \item {\large 复制第 9 题项目并编写测试}
+
+  在 assignment-3 目录下把 \texttt{q09} 复制为 \texttt{q10}，再建立
+  \texttt{tests/test\_cli.py}，用于检查空白用户名的处理结果。
+
+\begin{lstlisting}[language=bash]
+cp -r q09 q10
+cd q10
+mkdir -p tests
+nano tests/test_cli.py
+\end{lstlisting}
+
+  测试文件如下。这里用 \texttt{monkeypatch} 把 \texttt{--name} 设置为三个空格，
+  再检查 \texttt{main()} 是否抛出 \texttt{SystemExit}，并核对退出状态码是否为 2。
+
+\begin{lstlisting}[language=Python]
+import sys
+import pytest
+
+from greetlab.cli import main
+
+
+def test_blank_name_exits(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["sdt-greet", "--name", "   "])
+    with pytest.raises(SystemExit) as exc:
+        main()
+
+    assert exc.value.code == 2
+\end{lstlisting}
+
+  \item {\large 运行测试并确认失败}
+
+  在 \texttt{base} 环境的 \texttt{q10} 目录中运行：
+
+\begin{lstlisting}[language=bash]
+python -m pytest -q
+\end{lstlisting}
+
+  终端显示 \texttt{1 failed}，报错为 \texttt{DID NOT RAISE SystemExit}。
+  程序仍输出了空白问候语，说明它把三个空格当成了正常用户名。复现问题后，
+  我再把修复任务交给编程智能体。
+
+\reportimage{images/q10-redo-01-failed.png}{创建测试并确认空白用户名测试失败}
+
+  \item {\large 向编程智能体说明目标和约束}
+
+  在 Codex 中说明当前项目的位置，并给出修复目标、允许修改的文件和验证命令。
+  核心提示如下：
+
+  \begin{quote}
+  当 \texttt{--name} 只包含空白字符时，让 \texttt{main} 以
+  \texttt{SystemExit(2)} 结束。只修改 \texttt{q10/src/greetlab/cli.py}，
+  不要修改测试，保留正常用户名的输出。请先检查失败原因，修复后运行
+  \texttt{python -m pytest -q}。
+  \end{quote}
+
+  智能体读取代码和测试后先运行测试，得到相同的失败结果。原因是 \texttt{argparse}
+  会接收三个空格作为参数值，而原程序解析参数后直接打印，没有继续检查字符串内容。
+
+\reportimage{images/q10-redo-02-agent-process.png}{向智能体说明任务并由其检查、修复和验证}
+
+  \item {\large 检查智能体的修复结果}
+
+  智能体在参数解析后增加以下判断，测试文件保持不变：
+
+\begin{lstlisting}[language=Python]
+a = p.parse_args()
+
+if not a.name.strip():
+    raise SystemExit(2)
+
+print(f"Hello, {a.name}!")
+\end{lstlisting}
+
+  \texttt{strip()} 用来判断用户名去掉两端空格后是否为空。若为空就抛出
+  \texttt{SystemExit(2)}；否则仍使用原来的 \texttt{a.name} 输出问候语。
+  智能体修改后执行 \texttt{python -m pytest -q}，结果为 \texttt{1 passed}，
+  并检查了正常用户名的输出。
+
+\reportimage{images/q10-redo-03-agent-result.png}{智能体说明修改内容及测试结果}
+
+  \item {\large 人工检查差异并再次运行测试}
+
+  回到 \texttt{q10} 目录，手动执行下面的命令，对照第 9 题的源码检查修改，
+  然后再次运行测试：
+
+\begin{lstlisting}[language=bash]
+diff -u ../q09/src/greetlab/cli.py src/greetlab/cli.py
+python -m pytest -q
+\end{lstlisting}
+
+  差异中只有空白用户名判断、退出语句和用于分隔代码的空行，没有无关修改。
+  我再次运行测试，终端显示 \texttt{1 passed in 0.01s}。
+
+\reportimage{images/q10-redo-04-human-review.png}{人工检查源码差异并再次运行测试}
+
+  \newpage
+  \item {\large 记录核心提示和验证结果}
+
+  在 \texttt{q10/ai\_log.md} 中用四行记录本次任务的核心提示、测试命令、
+  智能体改动和人工验证结果，没有超过题目要求的 5 行。
+
+\begin{lstlisting}
+核心提示：空白 name 以 SystemExit(2) 结束；只改 cli.py，不改测试，保留正常输出。
+测试命令：在 q10 目录运行 python -m pytest -q。
+智能体改动：解析参数后增加 strip() 空白检查；测试由 1 failed 变为 1 passed。
+人工验证：检查 diff，无无关修改；再次运行测试，结果为 1 passed。
+\end{lstlisting}
+\end{enumerate}
+
+\section{第 11 题 把“无法处理”的协作材料改成可执行信息}
+
+\reportimage{images/q11-01-task.png}{第 11 题题目要求}
+
+\begin{enumerate}
+  \item {\large 创建 communication.md}
+
+  在 assignment-3 下建立 \texttt{q11} 目录，进入目录后创建
+  \texttt{communication.md}，用于填写改写后的协作材料。
+
+\begin{lstlisting}[language=bash]
+mkdir q11
+cd q11
+nano communication.md
+\end{lstlisting}
+
+\reportimage{images/q11-02-create-file.png}{创建 q11 目录和 communication.md}
+
+  \item {\large 改写 Issue}
+
+  Issue 中写明运行环境为 Windows，给出复现命令
+  \texttt{sdt-greet --name "   "}。期望结果是拒绝只含空白字符的 name，并以非零状态退出；
+  实际结果是程序输出空白问候语并以状态码 0 退出。不能确定的问题写为“是否仅在 Windows 下出现，待确认”。
+
+  \item {\large 改写提交信息}
+
+  提交标题使用祈使语气：
+
+\begin{lstlisting}
+fix: reject blank name input
+\end{lstlisting}
+
+  正文说明处理方法：拒绝只含空白字符的用户名，并使用 \texttt{SystemExit(2)} 退出。
+
+  \item {\large 改写评审意见}
+
+  评审中用 \texttt{Blocking} 指出程序把无效输入当成了有效输入，并建议通过
+  \texttt{strip()} 检查空白；再用 \texttt{Suggestion} 建议补充自动化测试，验证空白输入会触发
+  \texttt{SystemExit(2)}。两条意见分别对应必须修复的问题和后续改进建议。
+
+  \item {\large 检查内容和长度}
+
+  使用 \texttt{wc -m communication.md} 统计字符数，结果为 374，没有超过题目规定的
+  400 字。随后用 \texttt{cat communication.md} 查看全文，三部分内容均已写入。
+
+\reportimage{images/q11-03-check-content.png}{检查 communication.md 的字符数和内容}
+\end{enumerate}
+
+\section{第 12 题 修复一个可复现的线性回归训练循环}
+
+\reportimage{images/q12-01-task.png}{第 12 题题目要求}
+
+\begin{enumerate}
+  \item {\large 激活环境并创建训练文件}
+
+  本题需要使用 PyTorch，因此激活已经安装 PyTorch 的 \texttt{AI\_env} 环境，进入
+  assignment-3 下的 \texttt{q12} 目录并创建 \texttt{train.py}。
+
+\begin{lstlisting}[language=bash]
+conda activate AI_env
+cd ~/系统工具开发基础/assignment-3/q12
+nano train.py
+\end{lstlisting}
+
+  \item {\large 补全训练循环}
+
+  根据题目给出的代码，在每轮训练中依次计算预测值和损失，再调用
+  \texttt{zero\_grad()}、\texttt{backward()} 和 \texttt{step()}：
+
+\begin{lstlisting}[language=Python]
+for _ in range(200):
+    pred = model(x)
+    loss = loss_fn(pred, y)
+
+    opt.zero_grad()
+    loss.backward()
+    opt.step()
+\end{lstlisting}
+
+  \item {\large 计算并输出最终结果}
+
+  训练结束后调用 \texttt{model.eval()}，并在 \texttt{torch.no\_grad()} 中计算最终损失。
+  最后打印 final loss、weight 和 bias。代码没有把张量和模型移到 CUDA，所以本次训练使用 CPU。
+
+\reportimage{images/q12-02-code.png}{补全后的 train.py 代码}
+
+  \item {\large 运行程序并检查结果}
+
+  连续两次执行 \texttt{python train.py}，得到相同结果：
+  \begin{itemize}
+    \item final loss：\texttt{2.3923129102709773e-12}，小于 0.001；
+    \item weight：\texttt{2.99999737739563}，接近 3；
+    \item bias：\texttt{-0.9999998807907104}，接近 -1。
+  \end{itemize}
+
+\reportimage{images/q12-03-result.png}{两次运行线性回归训练程序的结果}
+\end{enumerate}
+
+\color{red}\chapter{课后习题}\color{black}
+
+\section{第 1 题 创建并安装带有 pyproject.toml 的 Python 包}
+
+\begin{enumerate}
+  \item {\large 创建项目配置与包目录}
+
+  在 \texttt{assignment-3/homework/01} 目录中创建 \texttt{pyproject.toml}，使用
+  setuptools 作为构建后端，并填写软件包名称、版本、说明和 Python 版本要求：
+
+\begin{lstlisting}
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hello-package"
+version = "0.1.0"
+description = "A simple Python package"
+requires-python = ">=3.10"
+\end{lstlisting}
+
+  接着创建 \texttt{hello\_package} 目录和 \texttt{\_\_init\_\_.py}，得到一个最小的
+  Python 包结构。
+
+\begin{lstlisting}[language=bash]
+mkdir hello_package
+touch hello_package/__init__.py
+\end{lstlisting}
+
+  \item {\large 创建虚拟环境并安装软件包}
+
+  使用 Python 自带的 venv 模块创建并激活虚拟环境。\texttt{which python} 返回当前项目下的
+  \texttt{.venv/bin/python}，后面的安装操作都在这个环境中完成。
+
+\begin{lstlisting}[language=bash]
+python3 -m venv .venv
+source .venv/bin/activate
+which python
+pip install .
+pip list
+\end{lstlisting}
+
+  pip 根据 \texttt{pyproject.toml} 构建 Wheel 并完成安装。随后查看软件包列表，
+  其中 \texttt{hello-package} 的版本为 0.1.0。
+
+\noindent{\color{red}操作失误，第三次实验作业不小心放到第四次里面了，现在已经移动到第三次实验了。}
+
+\reportimage{images/hw01-01-package-install.png}{创建 Python 包并在虚拟环境中安装}
+
+  \item {\large 创建并检查锁文件}
+
+  在虚拟环境中安装 uv，查看版本后运行 \texttt{uv lock}，生成 \texttt{uv.lock}：
+
+\begin{lstlisting}[language=bash]
+pip install uv
+uv --version
+uv lock
+cat uv.lock
+head -n 40 uv.lock
+\end{lstlisting}
+
+  本次使用的 uv 版本为 0.12.15。锁文件开头写有格式版本、修订号和
+  \texttt{requires-python = \">=3.10\"}；软件包条目记录了 \texttt{hello-package}、
+  版本 0.1.0 和本地可编辑来源，与 \texttt{pyproject.toml} 中的配置一致。
+
+\noindent{\color{red}操作失误，第三次实验作业不小心放到第四次里面了，现在已经移动到第三次实验了。}
+
+\reportimage{images/hw01-02-lock-file.png}{使用 uv 生成并检查锁文件}
+\end{enumerate}
+
+\newpage
+\section{第 2 题 使用现有的 pyproject.toml 项目执行构建并检查发布文件}
+
+\begin{enumerate}
+  \item {\large 创建并配置待构建项目}
+
+  在 \texttt{assignment-3/homework} 下创建 \texttt{02} 目录，再建立
+  \texttt{hello\_build} 包目录和 \texttt{\_\_init\_\_.py}。现有的
+  \texttt{pyproject.toml} 内容如下：
+
+\begin{lstlisting}
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hello-build"
+version = "0.1.0"
+description = "A simple build example"
+requires-python = ">=3.10"
+\end{lstlisting}
+
+\begin{lstlisting}[language=bash]
+mkdir 02
+cd 02
+mkdir hello_build
+touch hello_build/__init__.py
+\end{lstlisting}
+
+  \item {\large 执行构建并处理依赖获取失败}
+
+  第一次构建时，隔离环境需要从 PyPI 获取 \texttt{setuptools} 和 \texttt{wheel}，
+  但当时网络连接被拒绝，终端提示 \texttt{Failed to build}。调整
+  \texttt{pyproject.toml} 后，我加上 \texttt{--no-isolation}，直接使用当前 Python 环境中
+  已安装的构建依赖：
+
+\begin{lstlisting}[language=bash]
+python3 -m build --no-isolation
+\end{lstlisting}
+
+  这次构建顺利完成，同时生成了源码分发包和 Wheel。
+
+\noindent{\color{red}操作失误，第三次实验作业不小心放到第四次里面了，现在已经移动到第三次实验了。}
+
+\reportimage{images/hw02-01-build-process.png}{创建项目并处理隔离构建的依赖获取失败}
+
+  \item {\large 确认构建工具并重复构建}
+
+  \texttt{python3 -m pip show build} 显示 build 的版本为 1.6.1。随后再次执行无隔离构建，
+  两个发布文件仍能正常生成。
+
+\noindent{\color{red}操作失误，第三次实验作业不小心放到第四次里面了，现在已经移动到第三次实验了。}
+
+\reportimage{images/hw02-02-build-success.png}{检查 build 版本并再次成功构建}
+
+  \item {\large 检查生成的发布文件}
+
+  使用 \texttt{ls dist} 查看发布目录，其中包含两个文件：
+
+\begin{lstlisting}
+hello_build-0.1.0-py3-none-any.whl
+hello_build-0.1.0.tar.gz
+\end{lstlisting}
+
+  再运行 \texttt{file dist/*.whl}，终端把 Wheel 识别为使用 deflate 压缩的
+  Zip archive data。也就是说，Wheel 文件可以按 ZIP 归档查看。
+
+\noindent{\color{red}操作失误，第三次实验作业不小心放到第四次里面了，现在已经移动到第三次实验了。}
+
+\reportimage{images/hw02-03-dist-check.png}{检查 dist 目录及 Wheel 文件类型}
+\end{enumerate}
+
+\newpage
+\section{第 3 题 安装第二题构建的 Wheel 包并检查安装结果}
+
+\begin{enumerate}
+  \item {\large 创建并激活虚拟环境}
+
+  在 \texttt{assignment-3/homework} 下创建 \texttt{03} 目录，并在其中建立独立的
+  Python 虚拟环境，避免这次安装影响其他环境。
+
+\begin{lstlisting}[language=bash]
+mkdir -p 03
+cd 03
+python3 -m venv .venv
+source .venv/bin/activate
+\end{lstlisting}
+
+  \item {\large 安装第二题生成的 Wheel}
+
+  使用相对路径指定第二题 \texttt{dist} 目录中的 Wheel 文件并执行安装：
+
+\begin{lstlisting}[language=bash]
+pip install ../02/dist/hello_build-0.1.0-py3-none-any.whl
+\end{lstlisting}
+
+  pip 读取本地 Wheel 后安装 \texttt{hello-build}，终端显示
+  \texttt{Successfully installed hello-build-0.1.0}。
+
+  \item {\large 使用 pip show 检查安装结果}
+
+  \texttt{pip list} 中已经出现版本为 0.1.0 的 \texttt{hello-build}。继续运行
+  \texttt{pip show hello-build}，名称、版本和说明都与第二题的 \texttt{pyproject.toml}
+  一致，安装位置在当前虚拟环境的 \texttt{site-packages} 目录。
+
+\noindent{\color{red}操作失误，第三次实验作业不小心放到第四次里面了，现在已经移动到第三次实验了。}
+
+\reportimage{images/hw03-install-wheel.png}{安装第二题构建的 Wheel 并检查安装结果}
+\end{enumerate}
+
+\newpage
+\section{第 4 题 查看 Python 包的依赖信息和安装位置}
+
+\begin{enumerate}
+  \item {\large 查看软件包元数据与依赖信息}
+
+  激活第 3 题创建的虚拟环境，再使用 \texttt{pip show} 查看已安装软件包的详细信息：
+
+\begin{lstlisting}[language=bash]
+source .venv/bin/activate
+pip show hello-build
+\end{lstlisting}
+
+  输出中 \texttt{Name} 为 \texttt{hello-build}，\texttt{Version} 为 0.1.0，
+  \texttt{Summary} 为 \texttt{A simple build example}。\texttt{Requires} 为空，表示该包
+  没有声明运行依赖；\texttt{Required-by} 为空，表示当前环境中没有其他包依赖它。
+
+  \item {\large 查看安装位置}
+
+  \texttt{pip show} 的 \texttt{Location} 字段显示软件包安装在当前虚拟环境的
+  \texttt{.venv/lib/python3.12/site-packages} 目录。随后导入 \texttt{hello\_build} 并输出
+  模块的 \texttt{\_\_file\_\_} 属性，以确认实际加载的文件位置：
+
+\begin{lstlisting}[language=bash,basicstyle=\ttfamily\footnotesize]
+python -c "import hello_build; print(hello_build.__file__)"
+\end{lstlisting}
+
+  终端返回当前虚拟环境中 \texttt{hello\_build/\_\_init\_\_.py} 的完整路径，
+  与 \texttt{pip show} 给出的安装目录相符。
+
+\noindent{\color{red}操作失误，第三次实验作业不小心放到第四次里面了，现在已经移动到第三次实验了。}
+
+\reportimage{images/hw04-package-info.png}{查看 hello-build 的依赖信息和实际安装位置}
+\end{enumerate}
+
+\newpage
+\section{第 5 题 使用 Claude 智能体读取代码并自动生成说明文件}
+
+\begin{enumerate}
+  \item {\large 创建并运行示例程序}
+
+  在 \texttt{assignment-3/homework} 下创建 \texttt{05} 目录，并编写
+  \texttt{calculator.py}。其中 \texttt{add(a, b)} 负责加法，\texttt{multiply(a, b)}
+  负责乘法。运行程序后，终端依次输出 5 和 20。
+
+\begin{lstlisting}[language=bash]
+mkdir -p 05
+cd 05
+nano calculator.py
+python3 calculator.py
+\end{lstlisting}
+
+  \item {\large 启动 Claude 并说明任务要求}
+
+  在项目目录运行 \texttt{claude}，进入 Claude Code 交互界面，本次版本为 2.1.236。
+  我要求智能体读取 \texttt{calculator.py}，说明函数和运行结果，不改源代码，
+  只在当前目录新建 \texttt{README.md}。
+
+\noindent{\color{red}操作失误，第三次实验作业不小心放到第四次里面了，现在已经移动到第三次实验了。}
+
+\reportimage{images/hw05-01-run-claude.png}{运行示例程序并向 Claude 智能体提交任务}
+
+  \item {\large 由智能体分析代码并生成 README}
+
+  Claude 读取 \texttt{calculator.py} 后找到了 \texttt{add} 和 \texttt{multiply} 两个函数，
+  并写出一份 21 行的 \texttt{README.md}。文件分为程序功能、函数说明和运行结果三部分，
+  其中也写明了示例输出 5 和 20。
+
+  写完后，智能体重新读取 \texttt{README.md} 并汇总结果。\texttt{calculator.py}
+  没有发生改动，符合本题要求。
+
+\noindent{\color{red}操作失误，第三次实验作业不小心放到第四次里面了，现在已经移动到第三次实验了。}
+
+\reportimage{images/hw05-02-agent-result.png}{Claude 分析代码并生成 README.md}
+
+  \item {\large 退出智能体并检查生成文件}
+
+  输入 \texttt{/exit} 退出 Claude Code，再运行 \texttt{ls}。目录中保留了
+  \texttt{calculator.py}，同时多出了新生成的 \texttt{README.md}。
+
+\noindent{\color{red}操作失误，第三次实验作业不小心放到第四次里面了，现在已经移动到第三次实验了。}
+
+\reportimage{images/hw05-03-exit-list.png}{退出 Claude Code 并查看生成文件}
+
+  最后用 \texttt{cat README.md} 查看文件。内容包括加法、乘法两个函数的作用、参数和返回值，
+  也列出了程序运行时的输出 5 和 20。
+
+\noindent{\color{red}操作失误，第三次实验作业不小心放到第四次里面了，现在已经移动到第三次实验了。}
+
+\reportimage{images/hw05-04-readme.png}{检查 Claude 自动生成的 README.md}
+\end{enumerate}
+
+\newpage
+\section{第 6 题 让 Claude 智能体发现并修复 Python 程序中的错误}
+
+\begin{enumerate}
+  \item {\large 创建错误程序并复现问题}
+
+  在 \texttt{assignment-3/homework} 下创建 \texttt{06} 目录，并编写
+  \texttt{divide.py}。\texttt{divide(a, b)} 直接返回 \texttt{a / b}，程序分别用 2 和 0
+  作除数调用该函数。
+
+\begin{lstlisting}[language=Python]
+def divide(a, b):
+    return a / b
+
+
+print(divide(10, 2))
+print(divide(10, 0))
+\end{lstlisting}
+
+  第一个调用输出 5.0，第二个调用则触发
+  \texttt{ZeroDivisionError: division by zero}，程序在这里中断。
+
+\noindent{\color{red}操作失误，第三次实验作业不小心放到第四次里面了，现在已经移动到第三次实验了。}
+
+\reportimage{images/hw06-01-error.png}{运行 divide.py 并复现除零错误}
+
+  \item {\large 向 Claude 提交自动修复任务}
+
+  在当前目录启动 Claude Code。我要求智能体读取并运行 \texttt{divide.py}，找到报错原因后
+  直接修改文件；修改完成还要再次运行，直到程序能够正常结束。
+
+  Claude 很快定位到 \texttt{divide(10, 0)}。不过第一次运行时，Windows 环境中找不到
+  \texttt{python3}；改用 WSL 后又遇到路径转换问题。调整命令后，程序终于在 Ubuntu 中运行。
+
+\noindent{\color{red}操作失误，第三次实验作业不小心放到第四次里面了，现在已经移动到第三次实验了。}
+
+\reportimage{images/hw06-02-agent-diagnosis.png}{Claude 分析除零错误并处理运行环境问题}
+
+  \item {\large 由智能体修改代码并验证}
+
+  Claude 在 \texttt{divide} 函数中增加了除数判断。\texttt{b == 0} 时返回提示字符串，
+  其他情况仍执行原来的除法：
+
+\begin{lstlisting}[language=Python]
+def divide(a, b):
+    if b == 0:
+        return "Error: division by zero!"
+    return a / b
+\end{lstlisting}
+
+  修改后重新运行，终端依次输出 5.0 和 \texttt{Error: division by zero!}，
+  没有再出现异常回溯。
+
+\noindent{\color{red}操作失误，第三次实验作业不小心放到第四次里面了，现在已经移动到第三次实验了。}
+
+\reportimage{images/hw06-03-agent-fix.png}{Claude 修改 divide.py 并运行验证}
+
+  \item {\large 检查最终代码与运行结果}
+
+  退出智能体后，我用 \texttt{cat divide.py} 查看最终代码，再手动执行
+  \texttt{python3 divide.py}。两次输出与智能体的运行结果一致，除零时程序不会再崩溃。
+
+\noindent{\color{red}操作失误，第三次实验作业不小心放到第四次里面了，现在已经移动到第三次实验了。}
+
+\reportimage{images/hw06-04-final-check.png}{检查修复后的代码并再次运行程序}
+\end{enumerate}
+
+\newpage
+\section{第 7 题 编写一个最简单的 README}
+
+\begin{enumerate}
+  \item {\large 创建简单 Python 项目}
+
+  在 \texttt{assignment-3/homework} 下创建 \texttt{07} 目录，并在其中建立
+  \texttt{hello.py}。该程序只包含一条输出语句：
+
+\begin{lstlisting}[language=Python]
+print("Hello, World!")
+\end{lstlisting}
+
+  \item {\large 编写 README.md}
+
+  在项目目录中创建 \texttt{README.md}，写清项目用途、文件组成、运行命令和输出结果：
+
+\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
+# Hello Project
+
+这是一个简单的 Python 程序，用于输出 `Hello, World!`。
+
+## 文件说明
+- `hello.py`：Python 程序文件。
+- `README.md`：项目说明文件。
+
+## 运行方法
+python3 hello.py
+
+## 运行结果
+Hello, World!
+\end{lstlisting}
+
+  按照 README 中的命令即可运行程序，不需要再打开源码查找入口。
+
+\noindent{\color{red}操作失误，第三次实验作业不小心放到第四次里面了，现在已经移动到第三次实验了。}
+
+\reportimage{images/hw07-readme.png}{创建 hello.py 并编写 README.md}
+\end{enumerate}
+
+\newpage
+\section{第 8 题 编写一个规范的 Bug 报告}
+
+\begin{enumerate}
+  \item {\large 创建并运行错误程序}
+
+  在 \texttt{assignment-3/homework} 下创建 \texttt{08} 目录，并编写
+  \texttt{bug.py}。程序建立一个只有三个元素的列表，却尝试访问下标为 5 的元素：
+
+\begin{lstlisting}[language=Python]
+numbers = [1, 2, 3]
+print(numbers[5])
+\end{lstlisting}
+
+  运行 \texttt{python3 bug.py} 后，程序在第 2 行触发
+  \texttt{IndexError: list index out of range}。终端同时给出了文件路径和出错代码行，
+  这些信息都要写进 Bug 报告。
+
+  \item {\large 编写 BUG\_REPORT.md}
+
+  创建 \texttt{BUG\_REPORT.md}，按照题目要求依次记录环境、期望结果、实际结果和复现步骤：
+
+\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
+# Bug Report
+
+## 环境
+- 系统：WSL2 Ubuntu
+- Python：Python 3
+
+## 期望结果
+程序正常输出列表中的数字。
+
+## 实际结果
+程序出现 IndexError。
+
+## 复现步骤
+1. 进入程序目录。
+2. 运行 `python3 bug.py`。
+3. 程序出现 IndexError。
+\end{lstlisting}
+
+  复现步骤只保留进入目录和运行程序这两个必要操作。期望结果与实际结果分开写，
+  查看报告时可以直接看出问题所在。
+
+\noindent{\color{red}操作失误，第三次实验作业不小心放到第四次里面了，现在已经移动到第三次实验了。}
+
+\reportimage{images/hw08-bug-report.png}{复现 IndexError 并创建规范的 Bug 报告}
+\end{enumerate}
+
+\newpage
+\section{第 9 题 手动规范 Python 代码格式并提高可读性}
+
+\begin{enumerate}
+  \item {\large 创建并查看待整理代码}
+
+  在 \texttt{assignment-3/homework} 下创建 \texttt{09} 目录，并编写
+  \texttt{messy.py}。原代码能够完成加法运算，但运算符和函数参数之间缺少空格：
+
+\begin{lstlisting}[language=Python]
+def add(a, b):
+    return a+b
+
+
+print(add(2,3))
+\end{lstlisting}
+
+  代码虽然能运行，但空格使用不统一，看起来比较挤。
+
+  \item {\large 手动规范代码格式}
+
+  重新编辑 \texttt{messy.py}，在加法运算符两侧和函数调用的逗号后增加空格，并在函数定义与
+  顶层调用之间保留两个空行。整理后的代码如下：
+
+\begin{lstlisting}[language=Python]
+def add(a, b):
+    return a + b
+
+
+print(add(2, 3))
+\end{lstlisting}
+
+  这次只改格式，没有动 \texttt{add} 的计算逻辑。执行 \texttt{python3 messy.py}
+  后仍输出 5。
+
+\noindent{\color{red}操作失误，第三次实验作业不小心放到第四次里面了，现在已经移动到第三次实验了。}
+
+\reportimage{images/hw09-format-code.png}{手动规范 messy.py 的代码格式并运行}
+\end{enumerate}
+
+\newpage
+\section{第 10 题 使用 pytest 为简单 Python 函数编写并运行单元测试}
+
+\begin{enumerate}
+  \item {\large 编写待测试函数}
+
+  在 \texttt{assignment-3/homework} 下创建 \texttt{10} 目录，并在
+  \texttt{calculator.py} 中编写加法函数：
+
+\begin{lstlisting}[language=Python]
+def add(a, b):
+    return a + b
+\end{lstlisting}
+
+  \item {\large 编写单元测试}
+
+  创建 \texttt{test\_calculator.py}，从 \texttt{calculator} 模块导入 \texttt{add}，
+  再通过断言检查 \texttt{add(2, 3)} 的返回值是否等于 5：
+
+\begin{lstlisting}[language=Python]
+from calculator import add
+
+
+def test_add():
+    assert add(2, 3) == 5
+\end{lstlisting}
+
+  测试文件和测试函数都以 \texttt{test\_} 开头，Pytest 可以自动找到它。
+
+  \item {\large 运行测试并查看结果}
+
+  在项目目录执行安静模式测试：
+
+\begin{lstlisting}[language=bash]
+pytest -q
+\end{lstlisting}
+
+  终端显示 \texttt{1 passed in 0.01s}。运行 \texttt{ls} 后可以看到
+  \texttt{calculator.py}、\texttt{test\_calculator.py}，以及测试时生成的
+  \texttt{\_\_pycache\_\_} 目录。
+
+\noindent{\color{red}操作失误，第三次实验作业不小心放到第四次里面了，现在已经移动到第三次实验了。}
+
+\reportimage{images/hw10-pytest.png}{使用 Pytest 运行加法函数的单元测试}
+\end{enumerate}
+
+\color{red}\chapter{解题感悟}\color{black}
+\section{课上练习}
+\begin{enumerate}
+  \item {\large 第 9 题是我第一次把一个小项目从源码构建成 Wheel，再放到新虚拟环境中安装。
+  特意离开源码目录运行 \texttt{sdt-greet} 后仍能得到正确输出，这一步比只看“安装成功”更直观。}
+  \item {\large 第 10 题里最有用的是先保留失败测试。它把“空白用户名处理不对”变成了明确的
+  \texttt{1 failed}。智能体修好后，我又看了一遍差异并重跑测试，能够确定它没有顺手改动别的文件。}
+  \item {\large 第 11 题让我发现，“程序无法处理”这种说法几乎不能帮助别人定位问题。
+  把环境、命令、期望和实际结果补齐后，同一个问题就清楚多了；评审意见也应分清必须修改和建议改进。}
+  \item {\large 第 12 题把 PyTorch 训练循环的顺序串了起来：先清空梯度，再反向传播，最后更新参数。
+  训练结束不能只看程序是否跑完，还要检查 loss、weight 和 bias 是否接近题目给出的目标。}
+\end{enumerate}
+
+\newpage
+\section{课后习题}
+\begin{enumerate}
+  \item {\large 第 1 题实际做下来，我才把“写配置、建虚拟环境、安装本地包、生成锁文件”这几步
+  连在一起。以前看到 \texttt{pyproject.toml} 和锁文件时只知道它们与依赖有关，这次通过
+  \texttt{pip list} 和 \texttt{uv.lock} 对照，能看懂包名、版本和来源记录在哪里了。}
+  \item {\large 第 6 题给我的印象最深。除零错误本身不难，但 Claude 一开始受 Windows 和 WSL
+  路径影响，连续两次没有把程序跑起来。这让我意识到，智能体给出修改并不等于任务已经完成，
+  还要看它是否在正确的环境中真正运行过。最后我又手动执行了一次，心里才有底。}
+  \item {\large 第 10 题让我体会到单元测试的作用。以前修改小函数时通常只看一次输出，
+  现在可以把 \texttt{add(2, 3) == 5} 写成断言，以后代码发生变化时直接运行 Pytest，
+  很快就能知道原来的功能有没有被改坏。}
+\end{enumerate}
+
+\color{red}\chapter{上传GitHub}\color{black}
+
+\section{编写并更新 .gitignore}
+
+提交第三次实验前，我在课程仓库根目录继续更新 \texttt{.gitignore}。本次实验会产生虚拟环境、Python 构建目录、\texttt{egg-info} 元数据和测试缓存，如果全部上传，不但文件数量多，也会把本机环境带进仓库。因此，在原有规则后补充了第三次实验相关内容：
+
+\begin{lstlisting}
+# 第三次实验的虚拟环境和 Python 构建中间产物
+/assignment-3/q09-test/
+/assignment-3/**/build/
+/assignment-3/**/*.egg-info/
+
+# q10 从 q09 复制的旧构建包；q09/dist 保留为第 9 题实验成果
+/assignment-3/q10/dist/
+
+# 第三次实验报告的排版检查图片和本地备份
+/assignment-3/实验报告/tmp/
+/assignment-3/实验报告/*.bak
+.venv/
+\end{lstlisting}
+
+其中，\texttt{q09-test} 和 \texttt{.venv} 都是可以重新创建的虚拟环境；\texttt{build}、\texttt{egg-info} 和 \texttt{q10/dist} 属于构建过程中产生的文件。实验报告的临时检查图片和备份文件也没有提交。这样处理后，仓库中保留源码、测试、作业截图和正式报告，提交内容更清楚。
+
+\section{GitHub 仓库链接}
+
+本课程作业保存在下面的公开仓库中，默认分支为 \texttt{main}：
+
+\begin{center}
+\url{https://github.com/xiaoyang1088/system_development_tools}
+\end{center}
+
+仓库用户名为 \texttt{xiaoyang1088}，仓库名为 \texttt{system\_development\_tools}。第三次实验位于 \texttt{assignment-3/} 目录，其中包括课堂练习 \texttt{q09}--\texttt{q12}、课后练习 \texttt{homework/}、实验截图和实验报告。
+
+\section{commit 提交记录}
+
+第三次实验分三次提交。2026 年 9 月 14 日先提交了针对第三次实验补充的 \texttt{.gitignore}，对应提交号 \texttt{246d4c9}；9 月 15 日提交课堂练习 \texttt{q09}--\texttt{q12}，对应提交号 \texttt{2d3b9b7}；随后提交课后练习 \texttt{homework}，对应提交号 \texttt{b861116}。分开提交后，每次修改的范围比较明确，后续查看或回退时也更方便。
+
+\reportimage{images/github-commit-history.png}{第三次实验作业的 GitHub commit 提交记录}
+
+\end{document}
