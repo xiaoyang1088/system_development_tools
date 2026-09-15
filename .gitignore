@@ -34,3 +34,4 @@ __pycache__/
 # 第三次实验报告的排版检查图片和本地备份
 /assignment-3/实验报告/tmp/
 /assignment-3/实验报告/*.bak
+.venv/
