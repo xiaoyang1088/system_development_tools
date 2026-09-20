@@ -1,0 +1,7 @@
+[
+  {"name":"alpha","status":"active","downloads":120,"version":"1.2.0"},
+  {"name":"beta","status":"inactive","downloads":400,"version":"2.0.0"},
+  {"name":"gamma","status":"active","downloads":450,"version":"1.5.1"},
+  {"name":"delta","status":"active","downloads":450,"version":"0.9.0"},
+  {"name":"epsilon","status":"active","downloads":80,"version":"3.1.0"}
+]
