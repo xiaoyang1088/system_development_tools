@@ -35,3 +35,7 @@ __pycache__/
 /assignment-3/实验报告/tmp/
 /assignment-3/实验报告/*.bak
 .venv/
+/assignment-4/**/*.egg-info/
+
+# 第四次实验的 Python 构建临时目录
+     /assignment-4/**/build/
