@@ -5,6 +5,7 @@
 \usepackage{caption}
 \usepackage{listings}
 \usepackage{geometry}
+\usepackage{hyperref}
 
 \geometry{left=2.8cm,right=2.8cm,top=2.7cm,bottom=2.7cm}
 \setlength{\parindent}{2em}
@@ -35,13 +36,16 @@
 }
 
 \begin{document}
+\hypersetup{pageanchor=false}
 \title{系统开发工具基础}
 \author{肖扬\\计算机科学与技术\\学号：25020007140}
 \date{2026年9月14日}
 \maketitle
 
+\hypersetup{pageanchor=true}
 \pagenumbering{roman}
 \tableofcontents
+\clearpage
 \pagenumbering{arabic}
 
 \color{red}\chapter{实验环境说明}\color{black}
@@ -1117,5 +1121,64 @@ def test_add_negative():
   \item {\large 第 10 题中，正确测试、故意失败和恢复测试形成了清楚的对照。我能直接看到断言
   怎样发现错误，也明白测试通过后还要检查修改是否合理。}
 \end{enumerate}
+
+\color{red}\chapter{上传GitHub}\color{black}
+
+\section{编写并更新 .gitignore}
+
+提交第四次实验前，我继续在课程仓库根目录更新 \texttt{.gitignore}。本次实验会产生 Python
+虚拟环境、缓存目录、构建目录、\texttt{egg-info} 元数据和 LaTeX 编译中间文件。这些文件都可以
+重新生成，没有必要全部上传。第四次实验使用的主要忽略规则如下：
+
+\begin{lstlisting}
+# LaTeX 编译中间产物
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.xdv
+*.toc
+
+# Python 缓存和测试工具缓存
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+
+# 第四次实验的 Python 构建中间产物
+/assignment-4/**/*.egg-info/
+/assignment-4/**/build/
+
+# 第四次实验报告的临时文件和备份
+/assignment-4/实验报告/tmp/
+/assignment-4/实验报告/*.bak
+\end{lstlisting}
+
+其中，\texttt{.venv}、Python 缓存和测试缓存都可以重新创建；\texttt{build} 和
+\texttt{egg-info} 属于构建过程中产生的文件。LaTeX 的辅助文件、临时检查图片和备份文件也没有
+必要提交。\texttt{dist} 目录中的发布包保留为实验结果。这样处理后，仓库中主要保留源码、测试、
+作业截图和正式实验报告。
+
+\section{GitHub 仓库链接}
+
+本课程作业保存在下面的公开仓库中，默认分支为 \texttt{main}：
+
+\begin{center}
+\url{https://github.com/xiaoyang1088/system_development_tools}
+\end{center}
+
+仓库用户名为 \texttt{xiaoyang1088}，仓库名为
+\texttt{system\_development\_tools}。第四次实验位于 \texttt{assignment-4/} 目录，
+其中包括课堂练习 \texttt{q13}--\texttt{q16}、课后练习 \texttt{homework/}、
+实验截图和实验报告。
+
+\section{commit 提交记录}
+
+第四次实验分五次提交。
+
+\reportimage{images/github-commit-history.png}{第四次实验作业的 GitHub commit 提交记录}
 
 \end{document}
