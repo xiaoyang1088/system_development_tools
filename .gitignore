@@ -39,3 +39,6 @@ __pycache__/
 
 # 第四次实验的 Python 构建临时目录
      /assignment-4/**/build/
+# 第四次实验报告的临时文件和备份
+     /assignment-4/实验报告/tmp/
+     /assignment-4/实验报告/*.bak

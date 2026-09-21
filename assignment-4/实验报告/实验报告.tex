@@ -1,0 +1,1121 @@
+\documentclass[a4paper,12pt]{report}
+\usepackage{ctex}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{listings}
+\usepackage{geometry}
+
+\geometry{left=2.8cm,right=2.8cm,top=2.7cm,bottom=2.7cm}
+\setlength{\parindent}{2em}
+\setlength{\parskip}{0.3em}
+\setlength{\emergencystretch}{2em}
+
+\definecolor{codegray}{RGB}{247,247,247}
+\definecolor{framegray}{RGB}{150,150,150}
+\lstset{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{codegray},
+  frame=single,
+  rulecolor=\color{framegray},
+  breaklines=true,
+  keepspaces=true,
+  columns=fullflexible,
+  showstringspaces=false
+}
+
+\newcommand{\reportimage}[2]{%
+  \par\medskip
+  \noindent\begin{minipage}{\linewidth}
+    \centering
+    \includegraphics[width=0.88\linewidth,height=0.68\textheight,keepaspectratio]{#1}
+    \captionof{figure}{#2}
+  \end{minipage}
+  \par\medskip
+}
+
+\begin{document}
+\title{系统开发工具基础}
+\author{肖扬\\计算机科学与技术\\学号：25020007140}
+\date{2026年9月14日}
+\maketitle
+
+\pagenumbering{roman}
+\tableofcontents
+\pagenumbering{arabic}
+
+\color{red}\chapter{实验环境说明}\color{black}
+\begin{enumerate}
+  \item {\large 系统环境：Ubuntu，用户名 xy\_ai，WSL2 架构}
+  \item {\large Shell：bash 5.1.16（x86\_64-pc-linux-gnu）}
+  \item {\large Python：Miniconda base 环境中的 Python 3.12.4}
+  \item {\large 代码检查工具：Ruff 0.16.6}
+  \item {\large 测试工具：Pytest 9.1.1}
+  \item {\large LaTeX：TeX Live 2022/dev（Debian 版），使用 XeLaTeX 编译}
+\end{enumerate}
+
+\color{red}\chapter{课堂学习部分}\color{black}
+
+\section{第 13 题 建立可执行的本地质量门禁}
+
+\reportimage{images/q13-01-task.png}{第 13 题题目要求}
+
+\begin{enumerate}
+  \item {\large 复制项目并配置工具}
+
+  在 assignment-4 目录中把第 10 题的项目复制为 \texttt{q13}，进入项目后检查原有的
+  \texttt{pyproject.toml}，再补充 Ruff 和 Pytest 的最小配置。
+
+\begin{lstlisting}[language=bash]
+cp -r ../assignment-3/q10 q13
+cd q13
+nano pyproject.toml
+\end{lstlisting}
+
+  新增的配置如下：
+
+\begin{lstlisting}
+[tool.ruff]
+line-length = 88 
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+\end{lstlisting}
+
+\reportimage{images/q13-02-copy-config.png}{复制 q10 并修改 pyproject.toml}
+
+  \item {\large 补充两个测试}
+
+  在 \texttt{tests/test\_cli.py} 中保留空白姓名测试，并增加正常姓名测试。正常姓名测试运行
+  \texttt{main()} 后读取标准输出，检查输出内容中包含姓名 \texttt{Xiao}。
+
+\begin{lstlisting}[language=Python]
+def test_normal_name(monkeypatch, capsys):
+    monkeypatch.setattr(
+        "sys.argv",
+        ["sdt-greet", "--name", "Xiao"],
+    )
+
+    main()
+
+    captured = capsys.readouterr()
+    assert "Xiao" in captured.out
+\end{lstlisting}
+
+  运行 \texttt{pytest} 后共收集两个测试，结果为 \texttt{2 passed}。
+
+\reportimage{images/q13-03-tests.png}{补充正常姓名测试并运行 Pytest}
+
+  \item {\large 运行 Ruff 并修复问题}
+
+  先运行 \texttt{ruff format .} 格式化项目，再运行 \texttt{ruff check .} 检查代码。
+  第一次检查提示 \texttt{tests/test\_cli.py} 的导入顺序不正确。按照提示调整导入之间的空行后，
+  再次运行检查，终端显示 \texttt{All checks passed!}。
+
+\reportimage{images/q13-04-ruff.png}{运行 Ruff 并修复导入顺序问题}
+
+  \item {\large 编写并运行质量检查脚本}
+
+  创建 \texttt{check.sh}，按题目要求依次执行格式检查、代码检查和测试：
+
+\begin{lstlisting}[language=bash]
+#!/usr/bin/env bash
+
+set -e
+
+ruff format --check .
+ruff check .
+pytest
+\end{lstlisting}
+
+  第一次执行 \texttt{./check.sh} 时提示 \texttt{Permission denied}。使用
+  \texttt{chmod +x check.sh} 增加执行权限后重新运行，三个检查依次通过。最后执行
+  \texttt{echo \$?}，返回值为 0。
+
+\reportimage{images/q13-05-check-script.png}{运行 check.sh 并确认返回值为 0}
+\end{enumerate}
+
+\section{第 14 题 让 Make 只重建真正受影响的产物}
+
+\reportimage{images/q14-01-task.png}{第 14 题题目要求}
+
+\begin{enumerate}
+  \item {\large 创建题目给出的源文件}
+
+  在 assignment-4 下建立 \texttt{q14} 目录，并按题目内容创建
+  \texttt{data.csv}、\texttt{stats.py}、\texttt{build\_report.py} 和
+  \texttt{report.md}。
+
+\begin{lstlisting}[language=bash,basicstyle=\ttfamily\footnotesize]
+mkdir q14
+cd q14
+nano data.csv
+nano stats.py
+nano build_report.py
+nano report.md
+\end{lstlisting}
+
+  统计脚本读取 CSV 文件中的 value 列，把总和写入中间文件。报告脚本读取报告标题和
+  统计结果，再生成最终报告。
+
+  \item {\large 编写 Makefile}
+
+  创建 \texttt{Makefile}，写明默认目标、中间产物、最终产物和清理目标之间的依赖关系：
+
+\begin{lstlisting}[language=make]
+.PHONY: all clean
+
+all: report.txt
+
+stats.txt: data.csv stats.py
+	python3 stats.py
+
+report.txt: report.md stats.txt build_report.py
+	python3 build_report.py
+
+clean:
+	rm -f stats.txt report.txt
+\end{lstlisting}
+
+  \texttt{all} 和 \texttt{clean} 被声明为 PHONY 目标。生成 \texttt{stats.txt} 需要
+  \texttt{data.csv} 和 \texttt{stats.py}；生成 \texttt{report.txt} 需要
+  \texttt{report.md}、\texttt{stats.txt} 和 \texttt{build\_report.py}。
+
+  \item {\large 验证首次构建和无改动构建}
+
+  第一次运行 \texttt{make} 时，终端依次执行：
+
+\begin{lstlisting}[language=bash]
+python3 stats.py
+python3 build_report.py
+\end{lstlisting}
+
+  执行后生成 \texttt{stats.txt} 与 \texttt{report.txt}。
+  其中统计结果为 10，最终报告包含标题和 \texttt{Total: 10}。没有修改文件时再次运行
+  \texttt{make}，终端显示：
+
+\begin{lstlisting}
+make: Nothing to be done for 'all'.
+\end{lstlisting}
+
+  \item {\large 验证依赖更新和清理目标}
+
+  使用 \texttt{touch data.csv} 更新数据文件的时间，再运行 \texttt{make}，两个生成步骤都会
+  重新执行。随后直接运行两个 Python 脚本，再执行 \texttt{make} 时仍按文件依赖和修改时间判断。
+  最后运行 \texttt{make clean}，只删除 \texttt{stats.txt} 和 \texttt{report.txt}，源文件与
+  Makefile 均被保留。
+
+\reportimage{images/q14-02-build-check.png}{验证 Make 的增量构建和 clean 目标}
+\end{enumerate}
+
+\section{第 15 题 把本地 API 数据转换为可读报告}
+
+\reportimage{images/q15-01-task.png}{第 15 题题目要求}
+
+\begin{enumerate}
+  \item {\large 创建 JSON 文件并启动本地服务}
+
+  在 assignment-4 下建立 \texttt{q15} 目录，把题目给出的 JSON 数据保存为
+  \texttt{packages.json}。随后在该目录启动端口为 8000 的本地 HTTP 服务：
+
+\begin{lstlisting}[language=bash]
+mkdir q15
+cd q15
+nano packages.json
+python -m http.server 8000
+\end{lstlisting}
+
+  终端记录显示浏览器或 curl 请求 \texttt{/packages.json} 时返回状态码 200。完成请求后使用
+  \texttt{Ctrl-C} 停止服务。
+
+\reportimage{images/q15-02-http-server.png}{创建 packages.json 并启动本地 HTTP 服务}
+
+  \item {\large 使用 curl 获取数据}
+
+  保持本地 HTTP 服务运行，在另一个终端进入 q15，执行：
+
+\begin{lstlisting}[language=bash]
+curl --noproxy 127.0.0.1 -fsS \
+  http://127.0.0.1:8000/packages.json
+\end{lstlisting}
+
+  终端成功输出 \texttt{packages.json} 中的五条记录。
+
+\reportimage{images/q15-03-curl.png}{使用 curl 获取本地 API 数据}
+
+  \item {\large 安装 jq}
+
+  第一次把 curl 输出传给 jq 时，终端提示 \texttt{jq: command not found}。执行下面的命令
+  更新软件包列表并安装 jq：
+
+\begin{lstlisting}[language=bash]
+sudo apt update
+sudo apt install jq
+jq --version
+\end{lstlisting}
+
+  安装完成后运行版本检查，结果为 \texttt{jq-1.6}。
+
+\reportimage{images/q15-04-install-jq.png}{安装 jq 工具}
+
+  \item {\large 筛选并排序记录}
+
+  使用 jq 保留 status 为 active 且 downloads 不少于 100 的记录，再按 downloads 降序、
+  name 升序排列：
+
+\begin{lstlisting}[language=bash,basicstyle=\ttfamily\footnotesize]
+curl --noproxy 127.0.0.1 -fsS \
+  http://127.0.0.1:8000/packages.json |
+jq '[.[] | select(.status == "active" and .downloads >= 100)]
+    | sort_by(-.downloads, .name)'
+\end{lstlisting}
+
+  输出顺序为 delta、gamma、alpha。delta 和 gamma 的 downloads 都是 450，因此按 name
+  升序排列；alpha 的 downloads 为 120，排在最后。
+
+\reportimage{images/q15-05-jq-result.png}{使用 jq 筛选并排序 JSON 记录}
+
+  \item {\large 编写报告生成脚本}
+
+  创建 \texttt{api\_report.sh}，在 jq 中把筛选结果转换为 Markdown 表格，并将结果重定向到
+  \texttt{summary.md}：
+
+\begin{lstlisting}[language=bash,basicstyle=\ttfamily\footnotesize]
+#!/usr/bin/env bash
+
+set -e
+
+curl --noproxy 127.0.0.1 -fsS \
+  http://127.0.0.1:8000/packages.json |
+jq -r '
+  [.[] | select(.status == "active" and .downloads >= 100)]
+  | sort_by(-.downloads, .name)
+  | "# Package Summary\n\n| name | version | downloads |\n
+|---|---|---:|\n"
+    + (map("| \(.name) | \(.version) | \(.downloads) |")
+       | join("\n"))
+' > summary.md
+\end{lstlisting}
+
+  使用 \texttt{chmod +x api\_report.sh} 增加执行权限后运行脚本。生成的报告包含标题和
+  name、version、downloads 三列表格。再次运行脚本后内容保持不变。
+
+\reportimage{images/q15-06-summary.png}{运行脚本并检查重复生成的 Markdown 报告}
+\end{enumerate}
+
+\section{第 16 题 修复并交付一个陌生的小型工具仓库}
+
+\reportimage{images/q16-01-task.png}{第 16 题题目要求}
+
+\begin{enumerate}
+  \item {\large 复制项目并初始化 Git 仓库}
+
+  在 assignment-4 目录中把第 13 题项目复制为 \texttt{q16}，进入目录后初始化 Git 仓库，
+  配置本仓库使用的用户名和邮箱，再把原始文件提交为第一次提交。
+
+\begin{lstlisting}[language=bash,basicstyle=\ttfamily\footnotesize]
+cp -r q13 q16
+cd q16
+git init
+git config user.name "xiaoyang1088"
+git config user.email "3413851324@qq.com"
+git add .
+git commit -m "commit1"
+\end{lstlisting}
+
+\reportimage{images/q16-02-init-git.png}{复制 q13、初始化 Git 并提交原始文件}
+
+  \item {\large 检查初始状态}
+
+  运行 \texttt{git status}，终端显示工作区干净。随后运行 \texttt{./check.sh}，Ruff
+  格式检查、代码检查和两个 Pytest 测试全部通过。
+
+\reportimage{images/q16-03-baseline.png}{确认初始工作区干净并运行质量检查}
+
+  \item {\large 制造问题并确认检查失败}
+
+  把 \texttt{src/greetlab/cli.py} 中的问候语临时改成始终输出
+  \texttt{Hello, name!}，再运行 \texttt{./check.sh}。Ruff 报告 F541 错误，指出 f-string
+  中没有占位符，检查以失败结束。
+
+\begin{lstlisting}[language=Python]
+print(f"Hello, name!")
+\end{lstlisting}
+
+\reportimage{images/q16-04-check-fail.png}{修改问候语后质量检查失败}
+
+  \item {\large 定位并修复问题}
+
+  根据错误位置重新编辑 \texttt{cli.py}，恢复使用参数中的姓名：
+
+\begin{lstlisting}[language=Python]
+print(f"Hello, {a.name}!")
+\end{lstlisting}
+
+  再次运行 \texttt{./check.sh}，Ruff 检查和两个 Pytest 测试全部通过。
+
+\reportimage{images/q16-05-check-pass.png}{修复问候语后重新通过质量检查}
+
+  \item {\large 编写最小 Makefile}
+
+  创建 \texttt{Makefile}，包含 check、build 和 clean 三个目标，并把它们声明为 PHONY：
+
+\begin{lstlisting}[language=make]
+.PHONY: check build clean
+
+check:
+	./check.sh
+
+build:
+	python -m build
+
+clean:
+	rm -rf dist/ build/ *.egg-info
+\end{lstlisting}
+
+  运行 \texttt{make check} 后，脚本中的三项检查全部通过。
+
+  \item {\large 构建 Wheel}
+
+  运行 \texttt{make build}，Make 调用 \texttt{python -m build}，构建程序创建隔离环境并生成
+  源码包和 Wheel 文件。
+
+\reportimage{images/q16-06-build.png}{使用 make build 构建 Python 软件包}
+
+  \item {\large 计算校验值并提交最终改动}
+
+  使用 \texttt{ls -l dist/*.whl} 检查 Wheel，再运行 \texttt{sha256sum dist/*.whl}
+  计算 SHA-256。截图中的 Wheel 校验值为：
+
+\begin{lstlisting}
+79f4162b3ecc44a4480ace19f15fba5497d9645112cf1a6d132c34e1012b7ce6
+\end{lstlisting}
+
+  随后把 Makefile 加入暂存区并提交为第二次提交 \texttt{commit2}。该提交只包含 Makefile，
+  没有混入构建产物或其他临时修改。
+
+\reportimage{images/q16-07-hash-commit.png}{计算 Wheel 的 SHA-256 并提交 Makefile}
+
+  \item {\large 清理构建造成的工作区改动}
+
+  构建和测试会改变仓库中原来已跟踪的 Wheel、源码包、SOURCES.txt 和缓存文件。使用
+  \texttt{git restore} 分别恢复这些文件，并恢复临时修改过的 \texttt{cli.py}。最后再次运行
+  \texttt{git status}，终端显示 \texttt{nothing to commit, working tree clean}。
+
+\reportimage{images/q16-08-clean-status.png}{恢复构建产物后确认 Git 工作区干净}
+\end{enumerate}
+
+\color{red}\chapter{课后习题}\color{black}
+
+\section{第 1 题 使用 Shell 创建并查看文件}
+
+\noindent{\large\textbf{题目要求}}
+
+在当前目录下完成以下操作：
+
+\begin{enumerate}
+  \item 创建目录 \texttt{shell\_practice} 并进入该目录。
+  \item 创建文件 \texttt{hello.txt}。
+  \item 向文件中依次写入 \texttt{apple}、\texttt{banana} 和 \texttt{orange}，每项占一行。
+  \item 使用 \texttt{cat} 查看文件内容。
+  \item 使用 \texttt{pwd} 显示当前所在目录。
+  \item 使用 \texttt{ls -l} 查看文件的详细信息。
+\end{enumerate}
+
+要求记录使用的命令和最终输出。
+
+\noindent{\large\textbf{操作过程}}
+
+\begin{enumerate}
+  \item {\large 创建第一题目录}
+
+  进入 \texttt{assignment-4}，创建 \texttt{homework/01} 目录并进入该目录：
+
+\begin{lstlisting}[language=bash]
+cd /home/xy_ai/系统工具开发基础/assignment-4
+mkdir -p homework/01
+cd homework/01
+\end{lstlisting}
+
+  \item {\large 创建文件并写入内容}
+
+  创建 \texttt{shell\_practice} 目录并进入，再建立 \texttt{hello.txt}。使用
+  \texttt{printf} 向文件中写入三行内容：
+
+\begin{lstlisting}[language=bash]
+mkdir shell_practice
+cd shell_practice
+touch hello.txt
+printf "apple\nbanana\norange\n" > hello.txt
+\end{lstlisting}
+
+  \item {\large 查看文件内容和目录信息}
+
+  使用 \texttt{cat hello.txt} 查看文件，终端依次输出 \texttt{apple}、
+  \texttt{banana} 和 \texttt{orange}。随后运行 \texttt{pwd}，确认当前目录为
+  \texttt{homework/01/shell\_practice}。最后使用 \texttt{ls -l} 查看文件信息，
+  结果中可以看到 \texttt{hello.txt}，文件大小为 20 字节。
+
+\reportimage{images/hw01-shell-file.png}{创建 hello.txt 并查看文件内容和目录信息}
+\end{enumerate}
+
+\section{第 2 题 使用管道统计文本内容}
+
+\noindent{\large\textbf{题目要求}}
+
+创建文件 \texttt{names.txt}，内容如下：
+
+\begin{lstlisting}
+Tom
+Alice
+Tom
+Bob
+Alice
+Tom
+\end{lstlisting}
+
+完成以下任务：
+
+\begin{enumerate}
+  \item 使用 \texttt{sort} 对姓名进行排序。
+  \item 使用 \texttt{uniq -c} 统计每个姓名出现的次数。
+  \item 使用管道把排序和统计操作连接起来。
+  \item 将统计结果保存到 \texttt{result.txt}。
+  \item 使用 \texttt{cat result.txt} 检查最终结果。
+\end{enumerate}
+
+\noindent{\large\textbf{操作过程}}
+
+\begin{enumerate}
+  \item {\large 创建文本文件}
+
+  进入 \texttt{assignment-4/homework/02} 目录，使用 \texttt{printf} 创建
+  \texttt{names.txt}，再用 \texttt{cat} 检查文件内容：
+
+\begin{lstlisting}[language=bash]
+printf "Tom\nAlice\nTom\nBob\nAlice\nTom\n" > names.txt
+cat names.txt
+\end{lstlisting}
+
+  文件中共有六行姓名，其中 Tom 出现三次，Alice 出现两次，Bob 出现一次。
+
+  \item {\large 对姓名进行排序和统计}
+
+  先运行 \texttt{sort names.txt} 查看按字母顺序排列的结果。由于
+  \texttt{uniq -c} 只能统计相邻的重复行，因此将两个命令通过管道连接：
+
+\begin{lstlisting}[language=bash]
+sort names.txt | uniq -c
+\end{lstlisting}
+
+  终端显示 Alice 出现 2 次、Bob 出现 1 次、Tom 出现 3 次。
+
+  \item {\large 保存并检查统计结果}
+
+  使用输出重定向把管道的统计结果写入 \texttt{result.txt}，再查看文件内容：
+
+\begin{lstlisting}[language=bash]
+sort names.txt | uniq -c > result.txt
+cat result.txt
+\end{lstlisting}
+
+  \texttt{result.txt} 中的内容与终端直接显示的统计结果一致。
+
+\reportimage{images/hw02-pipeline-count.png}{使用管道统计姓名出现次数并保存结果}
+\end{enumerate}
+
+\section{第 3 题 查看环境变量和命令返回码}
+
+\noindent{\large\textbf{题目要求}}
+
+在 Bash 中完成以下操作：
+
+\begin{enumerate}
+  \item 使用 \texttt{echo \$SHELL} 查看当前 Shell。
+  \item 使用 \texttt{echo \$PATH} 查看命令搜索路径。
+  \item 使用 \texttt{which python3} 查看 Python 解释器的位置。
+  \item 使用 \texttt{ls} 查看一个存在的目录，再通过 \texttt{echo \$?} 查看返回码。
+  \item 使用 \texttt{ls} 查看一个不存在的目录，再次通过 \texttt{echo \$?} 查看返回码。
+  \item 简单说明返回码为 0 和非 0 时分别表示什么。
+\end{enumerate}
+
+\noindent{\large\textbf{操作过程}}
+
+\begin{enumerate}
+  \item {\large 查看 Shell 和命令搜索路径}
+
+  进入 \texttt{assignment-4/homework/03} 目录，分别查看当前 Shell 和
+  \texttt{PATH} 环境变量：
+
+\begin{lstlisting}[language=bash]
+echo $SHELL
+echo $PATH
+\end{lstlisting}
+
+  终端显示当前 Shell 为 \texttt{/bin/bash}。\texttt{PATH} 中包含 Miniconda、
+  Linux 系统目录和从 Windows 环境继承的多个命令搜索路径。
+
+  \item {\large 查看 Python 解释器的位置}
+
+  使用下面的命令检查运行 \texttt{python3} 时实际调用的解释器：
+
+\begin{lstlisting}[language=bash]
+which python3
+\end{lstlisting}
+
+  输出为 \texttt{/home/xy\_ai/miniconda3/bin/python3}，说明当前使用的是
+  Miniconda base 环境中的 Python 解释器。
+
+  \item {\large 比较成功和失败命令的返回码}
+
+  先查看当前目录并立即读取上一条命令的返回码：
+
+\begin{lstlisting}[language=bash]
+ls .
+echo $?
+\end{lstlisting}
+
+  终端输出返回码 0，表示 \texttt{ls .} 执行成功。随后查看一个不存在的目录：
+
+\begin{lstlisting}[language=bash]
+ls /not-exist-25020007140
+echo $?
+\end{lstlisting}
+
+  \texttt{ls} 提示目录不存在，返回码为 2。这说明返回码 0 表示命令执行成功，
+  非 0 返回码表示命令执行失败，具体数值可以反映不同的错误情况。
+
+\reportimage{images/hw03-environment-return-code.png}{查看环境变量、Python 位置和命令返回码}
+\end{enumerate}
+
+\section{第 4 题 使用 Vim 编辑文本文件}
+
+\noindent{\large\textbf{题目要求}}
+
+使用 Vim 完成以下操作：
+
+\begin{enumerate}
+  \item 创建并打开 \texttt{vim\_practice.txt}。
+  \item 在文件中输入三行文字。
+  \item 返回正常模式并删除其中一行。
+  \item 使用撤销命令恢复被删除的内容。
+  \item 保存文件并退出 Vim。
+  \item 使用 \texttt{cat} 检查文件的最终内容。
+\end{enumerate}
+
+要求说明进入插入模式、返回正常模式、撤销以及保存退出分别使用了什么按键。
+
+\noindent{\large\textbf{操作过程}}
+
+\begin{enumerate}
+  \item {\large 创建并打开文本文件}
+
+  进入第 4 题目录，使用 Vim 创建并打开 \texttt{vim\_practice.txt}：
+
+\begin{lstlisting}[language=bash]
+vim vim_practice.txt
+\end{lstlisting}
+
+  \item {\large 在 Vim 中输入并编辑文本}
+
+  打开文件后按 \texttt{i} 进入插入模式，依次输入 \texttt{First line}、
+  \texttt{Second line} 和 \texttt{Third line}。输入完成后按 \texttt{Esc}
+  返回正常模式。
+
+  在正常模式中输入 \texttt{gg} 回到第一行，再按 \texttt{j} 移动到第二行。
+  输入 \texttt{dd} 删除第二行，然后按 \texttt{u} 撤销删除，第二行恢复为
+  \texttt{Second line}。最后输入 \texttt{:wq} 并按回车，保存文件并退出 Vim。
+
+  \item {\large 检查保存后的文件内容}
+
+  回到终端后使用下面的命令显示行号并检查文件：
+
+\begin{lstlisting}[language=bash]
+cat -n vim_practice.txt
+\end{lstlisting}
+
+  终端显示文件仍包含完整的三行内容，说明删除操作已经成功撤销，修改也已经保存。
+
+\reportimage{images/hw04-vim-edit.png}{使用 Vim 编辑文件并检查最终内容}
+\end{enumerate}
+
+\section{第 5 题 根据报错修复 Python 程序}
+
+\noindent{\large\textbf{题目要求}}
+
+创建 \texttt{divide.py}，初始内容如下：
+
+\begin{lstlisting}[language=Python]
+def divide(a, b):
+    return a / b
+
+
+print(divide(10, 0))
+\end{lstlisting}
+
+完成以下任务：
+
+\begin{enumerate}
+  \item 运行程序并记录出现的错误类型。
+  \item 根据异常信息找到发生错误的代码。
+  \item 修改程序，使除数为 0 时输出提示信息，而不是直接崩溃。
+  \item 再次运行程序，确认程序能够正常结束。
+  \item 简单说明错误产生的原因和修改方法。
+\end{enumerate}
+
+\noindent{\large\textbf{操作过程}}
+
+\begin{enumerate}
+  \item {\large 创建程序并复现错误}
+
+  在 \texttt{assignment-4} 下创建 \texttt{homework/05} 目录，进入目录后使用
+  Nano 创建题目给出的 \texttt{divide.py}，然后运行程序：
+
+\begin{lstlisting}[language=bash]
+mkdir -p homework/05
+cd homework/05
+nano divide.py
+python3 divide.py
+\end{lstlisting}
+
+  程序执行 \texttt{divide(10, 0)} 时，在 \texttt{return a / b} 处触发
+  \texttt{ZeroDivisionError: division by zero}。原因是 Python 不允许数字除以 0。
+
+  \item {\large 增加除数为零的判断}
+
+  再次打开 \texttt{divide.py}，在执行除法前检查参数 \texttt{b}。修改后的函数如下：
+
+\begin{lstlisting}[language=Python]
+def divide(a, b):
+    if b == 0:
+        return "Error: division by zero!"
+    return a / b
+\end{lstlisting}
+
+  当除数为 0 时，函数直接返回错误提示；其他情况下仍执行原来的除法运算。
+
+  \item {\large 重新运行并检查结果}
+
+  保存文件后再次运行：
+
+\begin{lstlisting}[language=bash]
+python3 divide.py
+\end{lstlisting}
+
+  终端输出 \texttt{Error: division by zero!}，程序没有再出现异常回溯，能够正常结束。
+
+\reportimage{images/hw05-divide-fix.png}{复现除零错误并检查修复后的运行结果}
+\end{enumerate}
+
+\section{第 6 题 使用 time 查看 Python 程序运行时间}
+
+\noindent{\large\textbf{题目要求}}
+
+创建 \texttt{timer.py}，内容如下：
+
+\begin{lstlisting}[language=Python]
+import time
+
+print("Start")
+time.sleep(1)
+print("End")
+\end{lstlisting}
+
+完成以下操作：
+
+\begin{enumerate}
+  \item 直接运行程序，确认终端依次输出 \texttt{Start} 和 \texttt{End}。
+  \item 使用 \texttt{time python3 timer.py} 再次运行程序。
+  \item 记录命令输出中的 \texttt{real}、\texttt{user} 和 \texttt{sys} 时间。
+  \item 简单说明为什么 \texttt{real} 时间接近 1 秒，而 \texttt{user} 和
+  \texttt{sys} 时间通常很短。
+\end{enumerate}
+
+\noindent{\large\textbf{操作过程}}
+
+\begin{enumerate}
+  \item {\large 创建计时程序}
+
+  进入 \texttt{assignment-4}，创建 \texttt{homework/06} 目录并进入，然后使用
+  Nano 创建题目给出的 \texttt{timer.py}：
+
+\begin{lstlisting}[language=bash]
+cd /home/xy_ai/系统工具开发基础/assignment-4
+mkdir -p homework/06
+cd homework/06
+nano timer.py
+\end{lstlisting}
+
+  程序先输出 \texttt{Start}，使用 \texttt{time.sleep(1)} 暂停约 1 秒，最后输出
+  \texttt{End}。
+
+  \item {\large 直接运行程序}
+
+  使用下面的命令运行程序：
+
+\begin{lstlisting}[language=bash]
+python3 timer.py
+\end{lstlisting}
+
+  终端依次输出 \texttt{Start} 和 \texttt{End}，两次输出之间可以观察到约 1 秒的等待，
+  说明程序能够正常运行。
+
+  \item {\large 使用 time 测量运行时间}
+
+  在 Python 命令前加上 \texttt{time}，记录整个程序的运行时间：
+
+\begin{lstlisting}[language=bash]
+time python3 timer.py
+\end{lstlisting}
+
+  本次运行的 \texttt{real} 时间为 1.022 秒，\texttt{user} 和 \texttt{sys}
+  时间均为 0.011 秒。\texttt{real} 表示程序从开始到结束经过的实际时间，其中包含
+  \texttt{sleep(1)} 的等待时间，因此接近 1 秒；\texttt{user} 和 \texttt{sys}
+  分别表示用户态和内核态占用 CPU 的时间。程序在暂停期间几乎不使用 CPU，所以这两项都很短。
+
+\reportimage{images/hw06-time-python.png}{运行计时程序并使用 time 查看运行时间}
+\end{enumerate}
+
+\section{第 7 题 创建并安装简单的 Python 包}
+
+\noindent{\large\textbf{题目要求}}
+
+创建一个名为 \texttt{hello\_package} 的简单 Python 包，要求如下：
+
+\begin{enumerate}
+  \item 创建项目配置文件 \texttt{pyproject.toml}。
+  \item 创建 \texttt{hello\_package} 目录和 \texttt{hello\_package/\_\_init\_\_.py}。
+  \item 在 \texttt{\_\_init\_\_.py} 中编写 \texttt{say\_hello()} 函数，使其返回字符串
+  \texttt{Hello!}。
+  \item 创建并激活独立的 Python 虚拟环境。
+  \item 使用 \texttt{pip install .} 安装当前项目。
+  \item 离开项目源码目录后导入 \texttt{hello\_package}，并调用 \texttt{say\_hello()}。
+  \item 确认终端输出 \texttt{Hello!}。
+\end{enumerate}
+
+\noindent{\large\textbf{操作过程}}
+
+\begin{enumerate}
+  \item {\large 创建项目配置和包目录}
+
+  在 \texttt{assignment-4} 下创建 \texttt{homework/07} 目录，再建立
+  \texttt{hello\_package} 包目录和 \texttt{\_\_init\_\_.py}：
+
+\begin{lstlisting}[language=bash]
+mkdir -p homework/07
+cd homework/07
+mkdir hello_package
+touch hello_package/__init__.py
+\end{lstlisting}
+
+  随后创建 \texttt{pyproject.toml}，将项目名称设置为 \texttt{hello-package}，
+  版本设置为 0.1.0，并使用 setuptools 作为构建后端。在
+  \texttt{hello\_package/\_\_init\_\_.py} 中编写 \texttt{say\_hello()} 函数，
+  使其返回字符串 \texttt{Hello!}。
+
+  \item {\large 创建并激活虚拟环境}
+
+  使用 Python 自带的 venv 模块创建虚拟环境并激活：
+
+\begin{lstlisting}[language=bash]
+python3 -m venv .venv
+source .venv/bin/activate
+which python
+\end{lstlisting}
+
+  \texttt{which python} 返回当前项目中 \texttt{.venv/bin/python} 的完整路径，
+  说明后续安装命令会在独立虚拟环境中执行。
+
+  \item {\large 安装并检查软件包}
+
+  在项目根目录安装当前软件包，再查看其元数据：
+
+\begin{lstlisting}[language=bash]
+pip install .
+pip show hello-package
+\end{lstlisting}
+
+  pip 根据 \texttt{pyproject.toml} 构建 Wheel，并成功安装
+  \texttt{hello-package-0.1.0}。\texttt{pip show} 显示包名、版本、说明和虚拟环境中的
+  安装位置，均与项目配置一致。
+
+  \item {\large 在源码目录外验证导入结果}
+
+  返回上一级 \texttt{homework} 目录，在仍然激活的虚拟环境中运行：
+
+\begin{lstlisting}[language=bash,basicstyle=\ttfamily\footnotesize]
+cd ..
+python -c "import hello_package; print(hello_package.say_hello())"
+\end{lstlisting}
+
+  终端输出 \texttt{Hello!}。程序离开项目源码目录后仍能导入并调用该包，说明安装已经生效。
+
+\reportimage{images/hw07-package-install.png}{创建、安装并在源码目录外验证 Python 包}
+\end{enumerate}
+
+\section{第 8 题 使用编程智能体生成 README}
+
+\noindent{\large\textbf{题目要求}}
+
+创建 \texttt{calculator.py}，内容如下：
+
+\begin{lstlisting}[language=Python]
+def add(a, b):
+    return a + b
+
+
+print(add(2, 3))
+\end{lstlisting}
+
+向编程智能体提交以下任务：
+
+\begin{quote}
+阅读 \texttt{calculator.py}，为这个程序创建 \texttt{README.md}，说明程序功能、运行命令和
+预期输出。不要修改 \texttt{calculator.py}。
+\end{quote}
+
+完成后进行以下检查：
+
+\begin{enumerate}
+  \item 检查智能体是否只创建了 \texttt{README.md}。
+  \item 检查 README 是否包含程序功能、运行方法和输出结果。
+  \item 手动运行 \texttt{calculator.py}，核对 README 中的说明。
+  \item 记录提交给智能体的完整提示词。
+\end{enumerate}
+
+\noindent{\large\textbf{操作过程}}
+
+\begin{enumerate}
+  \item {\large 创建并运行示例程序}
+
+  进入第 8 题目录，并编写题目给出的 \texttt{calculator.py}。运行程序后，终端输出 5；
+  使用 \texttt{ls} 检查时，
+  目录中只有 \texttt{calculator.py}。
+
+\begin{lstlisting}[language=bash]
+mkdir -p homework/08
+cd homework/08
+nano calculator.py
+python3 calculator.py
+ls
+\end{lstlisting}
+
+\reportimage{images/hw08-01-create-run.png}{创建并运行 calculator.py}
+
+  \item {\large 向编程智能体提交任务}
+
+  启动 OpenAI Codex，并说明目标和文件修改范围。提交的提示内容如下：
+
+\begin{quote}
+请读取当前目录中的 \texttt{calculator.py}，为这个程序创建 \texttt{README.md}。
+README 需要说明程序功能、\texttt{add} 函数、运行命令和预期输出。不要修改
+\texttt{calculator.py}，也不要创建其他文件。完成后请重新读取 README，检查内容是否完整。
+\end{quote}
+
+  Codex 读取当前目录和程序内容后，确认 \texttt{add(a, b)} 返回 \texttt{a + b}，
+  程序运行时会输出 5，然后开始生成说明文件。
+
+\reportimage{images/hw08-02-agent-task.png}{向 Codex 提交 README 生成任务}
+
+  \item {\large 由智能体创建并检查 README}
+
+  Codex 创建 \texttt{README.md} 后重新读取文件，并检查源程序的校验结果与目录文件。
+  智能体报告 \texttt{calculator.py} 没有发生变化，目录中只有
+  \texttt{calculator.py} 和新建的 \texttt{README.md}。
+
+  README 包含程序功能、\texttt{add} 函数的参数与返回值、运行命令和预期输出 5，
+  符合题目要求。
+
+\reportimage{images/hw08-03-agent-result.png}{Codex 创建 README 并核对文件改动}
+
+  \item {\large 人工检查生成结果}
+
+  退出智能体后，使用 \texttt{cat README.md} 查看说明文件，再查看
+  \texttt{calculator.py} 并重新运行程序。README 的说明完整，源程序仍保持原样，
+  再次运行后终端仍输出 5。
+
+\begin{lstlisting}[language=bash]
+cat README.md
+cat calculator.py
+python3 calculator.py
+\end{lstlisting}
+
+\reportimage{images/hw08-04-final-check.png}{人工检查 README、源程序和运行结果}
+\end{enumerate}
+
+\section{第 9 题 编写简单的 Bug 报告}
+
+\noindent{\large\textbf{题目要求}}
+
+创建 \texttt{list\_bug.py}，内容如下：
+
+\begin{lstlisting}[language=Python]
+numbers = [1, 2, 3]
+print(numbers[5])
+\end{lstlisting}
+
+运行程序并根据结果创建 \texttt{BUG\_REPORT.md}。报告至少包括以下内容：
+
+\begin{enumerate}
+  \item 操作系统和运行环境。
+  \item Python 版本。
+  \item 运行程序所使用的命令。
+  \item 期望结果。
+  \item 实际结果。
+  \item 程序显示的错误类型。
+  \item 可以复现该问题的具体步骤。
+\end{enumerate}
+
+\noindent{\large\textbf{操作过程}}
+
+\begin{enumerate}
+  \item {\large 创建程序并复现错误}
+
+  进入 \texttt{assignment-4/homework/09} 目录，创建题目给出的
+  \texttt{list\_bug.py}。先查看 Python 版本，再运行程序：
+
+\begin{lstlisting}[language=bash]
+python3 --version
+python3 list_bug.py
+\end{lstlisting}
+
+  本次使用的版本为 Python 3.12.4。程序中的列表只有三个元素，却尝试访问下标为 5 的
+  元素，因此在第 2 行触发 \texttt{IndexError: list index out of range}，程序异常结束。
+
+  \item {\large 编写 Bug 报告}
+
+  创建 \texttt{BUG\_REPORT.md}，按照题目要求记录运行环境、执行命令、期望结果、
+  实际结果、错误类型和复现步骤。报告中的主要内容如下：
+
+\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
+# Bug Report
+
+## 环境
+- 系统：WSL2 Ubuntu
+- Python：Python 3.12.4
+
+## 运行命令
+`python3 list_bug.py`
+
+## 期望结果
+程序正常输出列表中的数字，或者在下标无效时给出提示并正常结束。
+
+## 实际结果
+程序异常结束，终端显示 `IndexError: list index out of range`。
+
+## 错误类型
+`IndexError`
+\end{lstlisting}
+
+  复现步骤写明进入目录、确认程序文件、运行命令以及出现错误的位置，其他人按照这些步骤即可
+  重新观察到相同问题。
+
+  \item {\large 检查报告内容}
+
+  使用 \texttt{cat BUG\_REPORT.md} 查看最终文件。终端中显示的环境信息、错误类型和复现步骤
+  与实际运行结果一致，报告包含了定位和复现问题所需的主要信息。
+
+\reportimage{images/hw09-bug-report.png}{复现列表越界错误并编写 Bug 报告}
+\end{enumerate}
+
+\section{第 10 题 为加法函数编写单元测试}
+
+\noindent{\large\textbf{题目要求}}
+
+创建 \texttt{calculator.py}，内容如下：
+
+\begin{lstlisting}[language=Python]
+def add(a, b):
+    return a + b
+\end{lstlisting}
+
+再创建 \texttt{test\_calculator.py}，使用 Pytest 完成以下任务：
+
+\begin{enumerate}
+  \item 测试 \texttt{add(2, 3)} 的返回值是否等于 5。
+  \item 测试 \texttt{add(-1, 1)} 的返回值是否等于 0。
+  \item 使用 \texttt{pytest -q} 运行测试，确认两项测试全部通过。
+  \item 故意把其中一个期望值改错，观察测试失败信息。
+  \item 恢复正确的期望值并重新运行测试，确认测试再次通过。
+\end{enumerate}
+
+\noindent{\large\textbf{操作过程}}
+
+\begin{enumerate}
+  \item {\large 创建函数和测试文件}
+
+  进入第 10 题目录并建立 \texttt{calculator.py}。文件中的 \texttt{add(a, b)}
+  函数直接返回两个参数之和。
+
+  随后创建 \texttt{test\_calculator.py}，分别测试两个正数相加和一正一负相加：
+
+\begin{lstlisting}[language=Python]
+from calculator import add
+
+
+def test_add_positive():
+    assert add(2, 3) == 5
+
+
+def test_add_negative():
+    assert add(-1, 1) == 0
+\end{lstlisting}
+
+  \item {\large 运行正确测试}
+
+  使用下面的命令运行测试：
+
+\begin{lstlisting}[language=bash]
+python3 -m pytest -q
+\end{lstlisting}
+
+  Pytest 自动发现两个测试函数，终端显示 \texttt{2 passed in 0.01s}，说明加法函数同时通过
+  两个测试用例。
+
+  \item {\large 故意修改期望值并观察失败}
+
+  把第二个测试中的正确期望值 0 临时改为 1：
+
+\begin{lstlisting}[language=Python]
+def test_add_negative():
+    assert add(-1, 1) == 1
+\end{lstlisting}
+
+  再次运行测试后，终端显示 \texttt{1 failed, 1 passed}。失败信息指出函数实际返回 0，
+  但测试期望得到 1，因此触发 \texttt{AssertionError}。
+
+  \item {\large 恢复测试并再次验证}
+
+  将第二个断言的期望值恢复为 0，再次执行 \texttt{python3 -m pytest -q}。
+  终端重新显示 \texttt{2 passed in 0.01s}，说明测试文件已恢复正确，两个用例均能通过。
+
+\reportimage{images/hw10-pytest-cycle.png}{运行正确测试、故意制造失败并恢复测试}
+\end{enumerate}
+
+\color{red}\chapter{解题感悟}\color{black}
+\section{课上练习}
+\begin{enumerate}
+  \item {\large 第 13 题中，我学会了把代码格式、静态检查和自动化测试放进同一个脚本。
+  运行脚本后可以一次检查多个项目要求，并通过返回值判断检查是否全部成功。}
+  \item {\large 第 14 题中，我学会了在 Makefile 中写明文件之间的依赖关系。
+  源文件没有变化时 Make 不会重复生成产物，依赖文件更新后才会重新执行对应命令。}
+  \item {\large 第 15 题中，我学会了使用 curl 获取本地 API 数据，并用 jq 完成筛选、排序和
+  格式转换。把这些命令写进脚本后，可以重复生成内容一致的 Markdown 报告。}
+  \item {\large 第 16 题中，我练习了从检查仓库状态开始，经过制造问题、定位修复、重新测试、
+  构建 Wheel 和提交改动的完整过程。最后还要清理构建产生的修改，保持 Git 工作区干净。}
+\end{enumerate}
+
+\section{课后习题}
+\begin{enumerate}
+  \item {\large 第 2 题让我学会了用管道连接命令。先排序再统计，比手动数姓名更快，
+  结果也能直接保存到文件。}
+  \item {\large 第 5 题先保留除零报错，再增加判断并重新运行。这个过程让我明白，
+  修复程序不能只改代码，还要用相同输入确认错误已经消失，最后的结果才更可靠。}
+  \item {\large 第 8 题让我发现，给智能体说明任务时，既要写清要生成什么，也要限制不能修改
+  哪些文件。README 完成后，我又查看源程序并重新运行，确认文件没有变化，结果仍然正确。
+  这样比只看回复更可靠。}
+  \item {\large 第 10 题中，正确测试、故意失败和恢复测试形成了清楚的对照。我能直接看到断言
+  怎样发现错误，也明白测试通过后还要检查修改是否合理。}
+\end{enumerate}
+
+\end{document}
